@@ -1,0 +1,117 @@
+package service
+
+import (
+	"context"
+
+	"github.com/launchventures/team-task-hub-backend/internal/domain"
+	apperrors "github.com/launchventures/team-task-hub-backend/internal/errors"
+	"github.com/launchventures/team-task-hub-backend/internal/repository"
+	"github.com/launchventures/team-task-hub-backend/internal/utils"
+)
+
+// UserService defines user-related business logic operations
+type UserService interface {
+	SignUp(ctx context.Context, email, password string) (*domain.User, string, error)
+	Login(ctx context.Context, email, password string) (*domain.User, string, error)
+	GetProfile(ctx context.Context, userID int) (*domain.User, error)
+	UpdateProfile(ctx context.Context, userID int, email string) (*domain.User, error)
+	ListUsers(ctx context.Context) ([]domain.User, error)
+}
+
+type userService struct {
+	userRepo repository.UserRepository
+}
+
+func NewUserService(userRepo repository.UserRepository) UserService {
+	return &userService{userRepo: userRepo}
+}
+
+// SignUp creates a new user account
+func (s *userService) SignUp(ctx context.Context, email, password string) (*domain.User, string, error) {
+	// Validate inputs
+	if appErr := utils.ValidateEmail(email); appErr != nil {
+		return nil, "", appErr
+	}
+
+	if appErr := utils.ValidatePassword(password); appErr != nil {
+		return nil, "", appErr
+	}
+
+	// Hash password
+	hashedPassword, err := utils.HashPassword(password)
+	if err != nil {
+		return nil, "", apperrors.NewInternalError("failed to hash password", err)
+	}
+
+	// Create user in database
+	user, err := s.userRepo.CreateUser(ctx, email, hashedPassword)
+	if err != nil {
+		return nil, "", err
+	}
+
+	// Generate JWT token
+	token, err := utils.GenerateToken(user.ID, user.Email)
+	if err != nil {
+		return nil, "", apperrors.NewInternalError("failed to generate token", err)
+	}
+
+	return user, token, nil
+}
+
+// Login authenticates a user and returns a JWT token
+func (s *userService) Login(ctx context.Context, email, password string) (*domain.User, string, error) {
+	// Validate inputs
+	if appErr := utils.ValidateEmail(email); appErr != nil {
+		return nil, "", appErr
+	}
+
+	// Get user by email
+	user, err := s.userRepo.GetUserByEmail(ctx, email)
+	if err != nil {
+		return nil, "", err
+	}
+
+	// Verify password
+	if !utils.VerifyPassword(user.PasswordHash, password) {
+		return nil, "", apperrors.NewAuthError(apperrors.ErrInvalidPassword, "invalid password")
+	}
+
+	// Generate JWT token
+	token, err := utils.GenerateToken(user.ID, user.Email)
+	if err != nil {
+		return nil, "", apperrors.NewInternalError("failed to generate token", err)
+	}
+
+	return user, token, nil
+}
+
+// GetProfile retrieves the current user's profile
+func (s *userService) GetProfile(ctx context.Context, userID int) (*domain.User, error) {
+	user, err := s.userRepo.GetUserByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
+}
+
+// UpdateProfile updates the current user's profile
+func (s *userService) UpdateProfile(ctx context.Context, userID int, name string) (*domain.User, error) {
+	// Update user in database
+	user, err := s.userRepo.UpdateUser(ctx, userID, name)
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
+}
+
+// ListUsers retrieves all users (for assignee selection)
+func (s *userService) ListUsers(ctx context.Context) ([]domain.User, error) {
+	users, err := s.userRepo.ListUsers(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return users, nil
+}
