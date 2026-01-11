@@ -11,6 +11,9 @@ import ConfirmDialog from '../components/ConfirmDialog';
 const TASK_STATUSES = ['OPEN', 'IN_PROGRESS', 'DONE'];
 const TASK_PRIORITIES = ['LOW', 'MEDIUM', 'HIGH'];
 
+// Helper function to shorten UUID to first 8 characters
+const shortenId = (id) => id?.substring(0, 8) || '-';
+
 function TaskBoard() {
   const { projectId } = useParams();
   const navigate = useNavigate();
@@ -45,7 +48,7 @@ function TaskBoard() {
   const { execute: fetchTasks, status: tasksStatus, error: tasksError } =
     useAsync(async () => {
       const data = await taskAPI.getByProject(projectId);
-      return data || [];
+      return Array.isArray(data) ? data : data?.data || [];
     });
 
   const { execute: fetchUsers } = useAsync(async () => {
@@ -72,7 +75,10 @@ function TaskBoard() {
   const filteredTasks = tasks.filter((task) => {
     if (filters.status && task.status !== filters.status) return false;
     if (filters.priority && task.priority !== filters.priority) return false;
-    if (filters.assignee_id && task.assignee_id !== parseInt(filters.assignee_id)) return false;
+
+    const taskAssigneeId = task.assignee_id || task.assignee?.id || '';
+    if (filters.assignee_id && String(taskAssigneeId) !== String(filters.assignee_id)) return false;
+
     if (searchTerm && !task.title.toLowerCase().includes(searchTerm.toLowerCase())) {
       return false;
     }
@@ -166,17 +172,21 @@ function TaskBoard() {
 
   const handleUpdateAssignee = async (taskId, newAssigneeId) => {
     try {
-      const assigneeId = newAssigneeId ? parseInt(newAssigneeId) : null;
-      await taskAPI.updateAssignee(taskId, assigneeId);
-      
-      const task = tasks.find(t => t.id === taskId);
-      const assignee = assigneeId ? users.find(u => u.id === assigneeId) : null;
-      
-      setTasks(
-        tasks.map((t) =>
-          t.id === taskId ? { ...t, assignee_id: assigneeId, assignee } : t
-        )
-      );
+      const assigneeId = newAssigneeId || null;
+      const updatedTask = await taskAPI.updateAssignee(taskId, assigneeId);
+
+      // If backend didn't return the full assignee object, hydrate from users list
+      const hydratedAssignee = updatedTask?.assignee || (assigneeId
+        ? users.find((u) => String(u.id) === String(assigneeId))
+        : null);
+
+      const nextTask = {
+        ...updatedTask,
+        assignee: hydratedAssignee || null,
+        assignee_id: assigneeId,
+      };
+
+      setTasks(tasks.map((t) => (t.id === taskId ? nextTask : t)));
     } catch (err) {
       console.error('Failed to update task assignee:', err);
     }
@@ -270,9 +280,9 @@ function TaskBoard() {
 
         {/* Header Section */}
         <div className="mb-10">
-          {/* Title Row */}
-          <div className="flex justify-between items-center gap-8 mb-6">
-            <div className="flex-1">
+          {/* Title and Buttons Row */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+            <div className="flex-1 w-full sm:w-auto">
               {editingProjectName ? (
                 <input
                   type="text"
@@ -280,7 +290,6 @@ function TaskBoard() {
                   onChange={(e) => setProjectName(e.target.value)}
                   onBlur={handleSaveProjectName}
                   onKeyDown={(e) => e.key === 'Enter' && handleSaveProjectName()}
-                  autoFocus
                   className="text-3xl font-semibold text-slate-900 bg-slate-50 px-3 py-2 rounded border border-slate-300 focus:outline-none w-full"
                 />
               ) : (
@@ -295,7 +304,7 @@ function TaskBoard() {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex gap-3 items-center flex-shrink-0">
+            <div className="flex gap-3 items-center">
               <button
                 onClick={() => setShowForm(!showForm)}
                 className="btn-primary"
@@ -311,27 +320,45 @@ function TaskBoard() {
             </div>
           </div>
 
-          {/* Description Box */}
-          <div className="mb-6">
-            {editingProjectDesc ? (
-              <textarea
-                value={projectDesc}
-                onChange={(e) => setProjectDesc(e.target.value)}
-                onBlur={handleSaveProjectDesc}
-                onKeyDown={(e) => e.key === 'Escape' && setEditingProjectDesc(false)}
-                autoFocus
-                className="text-slate-600 bg-slate-50 px-3 py-2 rounded border border-slate-300 focus:outline-none w-full resize-none"
-                rows="2"
-              />
-            ) : (
-              <div className="border border-slate-200 rounded p-3 bg-slate-50">
-                <p
-                  onClick={() => setEditingProjectDesc(true)}
-                  className={`cursor-text ${project?.description ? 'text-slate-600' : 'text-slate-400 italic'}`}
-                  title="Click to add description"
-                >
-                  {project?.description || 'Click to add description'}
-                </p>
+          {/* Description and Meta Info Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+            {/* Description Box */}
+            <div className="lg:col-span-3">
+              {editingProjectDesc ? (
+                <textarea
+                  value={projectDesc}
+                  onChange={(e) => setProjectDesc(e.target.value)}
+                  onBlur={handleSaveProjectDesc}
+                  onKeyDown={(e) => e.key === 'Escape' && setEditingProjectDesc(false)}
+                  className="text-slate-600 bg-slate-50 px-3 py-2 rounded border border-slate-300 focus:outline-none w-full resize-none"
+                  rows="2"
+                />
+              ) : (
+                <div className="border border-slate-200 rounded p-3 bg-slate-50 h-full">
+                  <p
+                    onClick={() => setEditingProjectDesc(true)}
+                    className={`cursor-text ${project?.description ? 'text-slate-600' : 'text-slate-400 italic'}`}
+                    title="Click to add description"
+                  >
+                    {project?.description || 'Click to add description'}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Project Meta Info */}
+            {project?.created_by && (
+              <div className="flex items-center gap-3 p-4 bg-gradient-to-br from-purple-50 to-indigo-50 rounded-lg border border-purple-200 shadow-sm hover:shadow-md transition-shadow">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center flex-shrink-0 shadow-sm">
+                  <span className="text-sm font-bold text-white">
+                    {project.created_by.email.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-purple-600 uppercase tracking-wide mb-0.5">Created by</p>
+                  <p className="text-sm font-semibold text-gray-900 truncate">{project.created_by.name || project.created_by.email.split('@')[0]}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{new Date(project.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                </div>
               </div>
             )}
           </div>
@@ -438,6 +465,7 @@ function TaskBoard() {
             <table className="w-full">
                 <thead>
                   <tr className="bg-slate-100 border-b border-slate-200">
+                    <SortHeader field="id" label="ID" />
                     <SortHeader field="title" label="Title" />
                     <SortHeader field="status" label="Status" />
                     <SortHeader field="priority" label="Priority" />
@@ -456,6 +484,9 @@ function TaskBoard() {
                         }
                       }}
                     >
+                      <td className="px-6 py-4 text-sm font-mono text-slate-600">
+                        {shortenId(task.id)}
+                      </td>
                       <td className="px-6 py-4 font-medium text-slate-900">
                         {task.title}
                       </td>
@@ -499,23 +530,23 @@ function TaskBoard() {
                       <td className="px-6 py-4 text-sm">
                         {task.assignee?.email ? (
                           <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-slate-400 to-slate-600 flex items-center justify-center text-white font-semibold text-xs">
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-indigo-600 flex items-center justify-center text-white font-semibold text-xs">
                               {task.assignee.email.charAt(0).toUpperCase()}
                             </div>
                             <div className="text-left">
-                              <p className="text-xs font-medium text-slate-900">{task.assignee.email.split('@')[0]}</p>
+                              <p className="text-xs font-medium text-slate-900">{task.assignee.name || task.assignee.email.split('@')[0]}</p>
                               <p className="text-xs text-slate-500">{task.assignee.email.split('@')[1]}</p>
                             </div>
                           </div>
                         ) : (
-                          <span className="text-slate-400">-</span>
+                          <span className="text-slate-400">Unassigned</span>
                         )}
                       </td>
                     </tr>
                   ))}
                   {paginatedTasks.length === 0 && (
                     <tr>
-                      <td colSpan="5" className="px-6 py-12 text-center text-slate-500">
+                      <td colSpan="7" className="px-6 py-12 text-center text-slate-500">
                         No tasks found
                       </td>
                     </tr>

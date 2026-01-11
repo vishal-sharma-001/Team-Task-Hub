@@ -11,12 +11,12 @@ import (
 
 // CommentService defines comment-related business logic operations
 type CommentService interface {
-	CreateComment(ctx context.Context, taskID, userID int, content string) (*domain.Comment, error)
-	GetComment(ctx context.Context, id int) (*domain.Comment, error)
-	ListComments(ctx context.Context, taskID, page, pageSize int) ([]domain.Comment, int, error)
+	CreateComment(ctx context.Context, taskID, userID string, content string) (*domain.Comment, error)
+	GetComment(ctx context.Context, id string) (*domain.Comment, error)
+	ListComments(ctx context.Context, taskID string, page, pageSize int) ([]domain.Comment, int, error)
 	ListRecentComments(ctx context.Context, page, pageSize int) ([]domain.Comment, int, error)
-	UpdateComment(ctx context.Context, id int, content string) (*domain.Comment, error)
-	DeleteComment(ctx context.Context, id int) error
+	UpdateComment(ctx context.Context, id string, content string) (*domain.Comment, error)
+	DeleteComment(ctx context.Context, id string) error
 }
 
 type commentService struct {
@@ -28,9 +28,9 @@ func NewCommentService(commentRepo repository.CommentRepository) CommentService 
 }
 
 // CreateComment creates a new comment with validation
-func (s *commentService) CreateComment(ctx context.Context, taskID, userID int, content string) (*domain.Comment, error) {
+func (s *commentService) CreateComment(ctx context.Context, taskID, userID string, content string) (*domain.Comment, error) {
 	// Validate task ID and user ID
-	if taskID <= 0 || userID <= 0 {
+	if taskID == "" || userID == "" {
 		return nil, apperrors.NewValidationError(apperrors.ErrInvalidInput, "invalid task ID or user ID")
 	}
 
@@ -54,8 +54,8 @@ func (s *commentService) CreateComment(ctx context.Context, taskID, userID int, 
 }
 
 // GetComment retrieves a comment by ID
-func (s *commentService) GetComment(ctx context.Context, id int) (*domain.Comment, error) {
-	if id <= 0 {
+func (s *commentService) GetComment(ctx context.Context, id string) (*domain.Comment, error) {
+	if id == "" {
 		return nil, apperrors.NewValidationError(apperrors.ErrInvalidInput, "invalid comment ID")
 	}
 
@@ -68,9 +68,9 @@ func (s *commentService) GetComment(ctx context.Context, id int) (*domain.Commen
 }
 
 // ListComments retrieves all comments for a task with pagination
-func (s *commentService) ListComments(ctx context.Context, taskID, page, pageSize int) ([]domain.Comment, int, error) {
+func (s *commentService) ListComments(ctx context.Context, taskID string, page, pageSize int) ([]domain.Comment, int, error) {
 	// Validate task ID
-	if taskID <= 0 {
+	if taskID == "" {
 		return nil, 0, apperrors.NewValidationError(apperrors.ErrInvalidInput, "invalid task ID")
 	}
 
@@ -113,9 +113,9 @@ func (s *commentService) ListRecentComments(ctx context.Context, page, pageSize 
 }
 
 // UpdateComment updates a comment with validation
-func (s *commentService) UpdateComment(ctx context.Context, id int, content string) (*domain.Comment, error) {
+func (s *commentService) UpdateComment(ctx context.Context, id string, content string) (*domain.Comment, error) {
 	// Validate comment ID
-	if id <= 0 {
+	if id == "" {
 		return nil, apperrors.NewValidationError(apperrors.ErrInvalidInput, "invalid comment ID")
 	}
 
@@ -139,8 +139,8 @@ func (s *commentService) UpdateComment(ctx context.Context, id int, content stri
 }
 
 // DeleteComment deletes a comment
-func (s *commentService) DeleteComment(ctx context.Context, id int) error {
-	if id <= 0 {
+func (s *commentService) DeleteComment(ctx context.Context, id string) error {
+	if id == "" {
 		return apperrors.NewValidationError(apperrors.ErrInvalidInput, "invalid comment ID")
 	}
 

@@ -68,7 +68,7 @@ type CreateTaskRequest struct {
 	Title       string     `json:"title" validate:"required,min=3,max=200"`
 	Description string     `json:"description" validate:"max=2000"`
 	Priority    string     `json:"priority" validate:"required,oneof=LOW MEDIUM HIGH"`
-	AssigneeID  *int       `json:"assignee_id"`
+	AssigneeID  *string    `json:"assignee_id"`
 	DueDate     *time.Time `json:"due_date"`
 }
 
@@ -108,7 +108,7 @@ type UpdateTaskRequest struct {
 	Description *string    `json:"description" validate:"omitempty,max=2000"`
 	Status      *string    `json:"status" validate:"omitempty,oneof=OPEN IN_PROGRESS DONE"`
 	Priority    *string    `json:"priority" validate:"omitempty,oneof=LOW MEDIUM HIGH"`
-	AssigneeID  *int       `json:"assignee_id"`
+	AssigneeID  *string    `json:"assignee_id"`
 	DueDate     *time.Time `json:"due_date"`
 }
 
@@ -152,11 +152,11 @@ type UpdateTaskPriorityRequest struct {
 }
 
 type UpdateTaskAssigneeRequest struct {
-	AssigneeID *int `json:"assignee_id"`
+	AssigneeID *string `json:"assignee_id"`
 }
 
 type AssignTaskRequest struct {
-	UserID int `json:"user_id" validate:"required,min=1"`
+	UserID string `json:"user_id" validate:"required"`
 }
 
 // DTO for comment requests

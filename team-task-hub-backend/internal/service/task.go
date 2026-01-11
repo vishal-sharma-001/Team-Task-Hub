@@ -12,13 +12,14 @@ import (
 
 // TaskService defines task-related business logic operations
 type TaskService interface {
-	CreateTask(ctx context.Context, projectID, createdByID int, title, description, priority string, assigneeID *int, dueDate *time.Time) (*domain.Task, error)
-	GetTask(ctx context.Context, id int) (*domain.Task, error)
-	ListTasks(ctx context.Context, projectID, page, pageSize int, status, priority string) ([]domain.Task, int, error)
-	ListAssignedTasks(ctx context.Context, userID, page, pageSize int, status, priority string) ([]domain.Task, int, error)
-	UpdateTask(ctx context.Context, id int, title, description, status, priority string, assigneeID *int, dueDate *time.Time) (*domain.Task, error)
-	AssignTask(ctx context.Context, taskID, userID int) error
-	DeleteTask(ctx context.Context, id int) error
+	CreateTask(ctx context.Context, projectID, createdByID string, title, description, priority string, assigneeID *string, dueDate *time.Time) (*domain.Task, error)
+	GetTask(ctx context.Context, id string) (*domain.Task, error)
+	ListTasks(ctx context.Context, projectID string, page, pageSize int, status, priority string) ([]domain.Task, int, error)
+	ListAssignedTasks(ctx context.Context, userID string, page, pageSize int, status, priority string) ([]domain.Task, int, error)
+	UpdateTask(ctx context.Context, id string, title, description, status, priority string, assigneeID *string, dueDate *time.Time) (*domain.Task, error)
+	AssignTask(ctx context.Context, taskID, userID, assignedByID string) error
+	UnassignTask(ctx context.Context, taskID string) error
+	DeleteTask(ctx context.Context, id string) error
 }
 
 type taskService struct {
@@ -30,7 +31,7 @@ func NewTaskService(taskRepo repository.TaskRepository) TaskService {
 }
 
 // CreateTask creates a new task with validation
-func (s *taskService) CreateTask(ctx context.Context, projectID, createdByID int, title, description, priority string, assigneeID *int, dueDate *time.Time) (*domain.Task, error) {
+func (s *taskService) CreateTask(ctx context.Context, projectID, createdByID string, title, description, priority string, assigneeID *string, dueDate *time.Time) (*domain.Task, error) {
 	// Validate task title
 	if appErr := utils.ValidateTaskTitle(title); appErr != nil {
 		return nil, appErr
@@ -59,8 +60,8 @@ func (s *taskService) CreateTask(ctx context.Context, projectID, createdByID int
 }
 
 // GetTask retrieves a task by ID
-func (s *taskService) GetTask(ctx context.Context, id int) (*domain.Task, error) {
-	if id <= 0 {
+func (s *taskService) GetTask(ctx context.Context, id string) (*domain.Task, error) {
+	if id == "" {
 		return nil, apperrors.NewValidationError(apperrors.ErrInvalidInput, "invalid task ID")
 	}
 
@@ -73,7 +74,7 @@ func (s *taskService) GetTask(ctx context.Context, id int) (*domain.Task, error)
 }
 
 // ListTasks retrieves all tasks for a project with optional filters and pagination
-func (s *taskService) ListTasks(ctx context.Context, projectID, page, pageSize int, status, priority string) ([]domain.Task, int, error) {
+func (s *taskService) ListTasks(ctx context.Context, projectID string, page, pageSize int, status, priority string) ([]domain.Task, int, error) {
 	// Validate pagination parameters
 	if page < 1 {
 		page = 1
@@ -107,7 +108,7 @@ func (s *taskService) ListTasks(ctx context.Context, projectID, page, pageSize i
 }
 
 // ListAssignedTasks retrieves all tasks assigned to a user with optional filters and pagination
-func (s *taskService) ListAssignedTasks(ctx context.Context, userID, page, pageSize int, status, priority string) ([]domain.Task, int, error) {
+func (s *taskService) ListAssignedTasks(ctx context.Context, userID string, page, pageSize int, status, priority string) ([]domain.Task, int, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -127,7 +128,7 @@ func (s *taskService) ListAssignedTasks(ctx context.Context, userID, page, pageS
 }
 
 // UpdateTask updates a task with validation
-func (s *taskService) UpdateTask(ctx context.Context, id int, title, description, status, priority string, assigneeID *int, dueDate *time.Time) (*domain.Task, error) {
+func (s *taskService) UpdateTask(ctx context.Context, id string, title, description, status, priority string, assigneeID *string, dueDate *time.Time) (*domain.Task, error) {
 	// Get current task first to support partial updates
 	currentTask, err := s.taskRepo.GetTaskByID(ctx, id)
 	if err != nil {
@@ -189,12 +190,12 @@ func (s *taskService) UpdateTask(ctx context.Context, id int, title, description
 }
 
 // AssignTask assigns a task to a user
-func (s *taskService) AssignTask(ctx context.Context, taskID, userID int) error {
-	if taskID <= 0 || userID <= 0 {
-		return apperrors.NewValidationError(apperrors.ErrInvalidInput, "invalid task ID or user ID")
+func (s *taskService) AssignTask(ctx context.Context, taskID, userID, assignedByID string) error {
+	if taskID == "" || userID == "" || assignedByID == "" {
+		return apperrors.NewValidationError(apperrors.ErrInvalidInput, "invalid task ID, user ID, or assigned by ID")
 	}
 
-	_, err := s.taskRepo.AssignTaskToUser(ctx, taskID, userID)
+	_, err := s.taskRepo.AssignTaskToUser(ctx, taskID, userID, assignedByID)
 	if err != nil {
 		return err
 	}
@@ -202,9 +203,18 @@ func (s *taskService) AssignTask(ctx context.Context, taskID, userID int) error 
 	return nil
 }
 
+// UnassignTask clears the assignee and assigned_by for a task
+func (s *taskService) UnassignTask(ctx context.Context, taskID string) error {
+	if taskID == "" {
+		return apperrors.NewValidationError(apperrors.ErrInvalidInput, "invalid task ID")
+	}
+
+	return s.taskRepo.UnassignTask(ctx, taskID)
+}
+
 // DeleteTask deletes a task
-func (s *taskService) DeleteTask(ctx context.Context, id int) error {
-	if id <= 0 {
+func (s *taskService) DeleteTask(ctx context.Context, id string) error {
+	if id == "" {
 		return apperrors.NewValidationError(apperrors.ErrInvalidInput, "invalid task ID")
 	}
 

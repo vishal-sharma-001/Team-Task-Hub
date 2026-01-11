@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -64,7 +65,7 @@ func (a *App) setupRoutes() {
 	a.Router.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"status":"ok"}`))
+		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 	})
 
 	// Initialize repositories

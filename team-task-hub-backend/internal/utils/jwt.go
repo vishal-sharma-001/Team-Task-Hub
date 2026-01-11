@@ -15,13 +15,13 @@ const (
 )
 
 type JWTClaims struct {
-	UserID int    `json:"user_id"`
+	UserID string `json:"user_id"`
 	Email  string `json:"email"`
 	jwt.RegisteredClaims
 }
 
 // GenerateToken creates a JWT token for a user
-func GenerateToken(userID int, email string) (string, error) {
+func GenerateToken(userID string, email string) (string, error) {
 	claims := JWTClaims{
 		UserID: userID,
 		Email:  email,
@@ -67,19 +67,19 @@ func ValidateToken(tokenString string) (*JWTClaims, *errors.AppError) {
 }
 
 // ExtractUserIDFromToken extracts user ID from JWT token string
-func ExtractUserIDFromToken(tokenString string) (int, *errors.AppError) {
+func ExtractUserIDFromToken(tokenString string) (string, *errors.AppError) {
 	claims, appErr := ValidateToken(tokenString)
 	if appErr != nil {
-		return 0, appErr
+		return "", appErr
 	}
 	return claims.UserID, nil
 }
 
 // ExtractUserIDFromContext extracts user ID from request context
-func ExtractUserIDFromContext(ctx context.Context) (int, error) {
-	userID, ok := ctx.Value("user_id").(int)
+func ExtractUserIDFromContext(ctx context.Context) (string, error) {
+	userID, ok := ctx.Value("user_id").(string)
 	if !ok {
-		return 0, errors.NewAuthError(errors.ErrUnauthorized, "user ID not found in context")
+		return "", errors.NewAuthError(errors.ErrUnauthorized, "user ID not found in context")
 	}
 	return userID, nil
 }

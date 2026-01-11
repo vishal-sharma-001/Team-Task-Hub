@@ -3,19 +3,19 @@ package service
 import (
 	"context"
 
-	apperrors "github.com/launchventures/team-task-hub-backend/internal/errors"
 	"github.com/launchventures/team-task-hub-backend/internal/domain"
+	apperrors "github.com/launchventures/team-task-hub-backend/internal/errors"
 	"github.com/launchventures/team-task-hub-backend/internal/repository"
 	"github.com/launchventures/team-task-hub-backend/internal/utils"
 )
 
 // ProjectService defines project-related business logic operations
 type ProjectService interface {
-	CreateProject(ctx context.Context, userID int, name, description string) (*domain.Project, error)
-	GetProject(ctx context.Context, id int) (*domain.Project, error)
-	ListProjects(ctx context.Context, userID, page, pageSize int) ([]domain.Project, int, error)
-	UpdateProject(ctx context.Context, id int, name, description string) (*domain.Project, error)
-	DeleteProject(ctx context.Context, id int) error
+	CreateProject(ctx context.Context, userID string, name, description string) (*domain.Project, error)
+	GetProject(ctx context.Context, id string) (*domain.Project, error)
+	ListProjects(ctx context.Context, userID string, page, pageSize int) ([]domain.Project, int, error)
+	UpdateProject(ctx context.Context, id string, name, description string) (*domain.Project, error)
+	DeleteProject(ctx context.Context, id string) error
 }
 
 type projectService struct {
@@ -27,7 +27,7 @@ func NewProjectService(projectRepo repository.ProjectRepository) ProjectService 
 }
 
 // CreateProject creates a new project with validation
-func (s *projectService) CreateProject(ctx context.Context, userID int, name, description string) (*domain.Project, error) {
+func (s *projectService) CreateProject(ctx context.Context, userID string, name, description string) (*domain.Project, error) {
 	// Validate project name
 	if appErr := utils.ValidateProjectName(name); appErr != nil {
 		return nil, appErr
@@ -38,8 +38,8 @@ func (s *projectService) CreateProject(ctx context.Context, userID int, name, de
 		return nil, apperrors.NewValidationError(apperrors.ErrInvalidInput, "description must not exceed 1000 characters")
 	}
 
-	// Create project in database
-	project, err := s.projectRepo.CreateProject(ctx, userID, name, description)
+	// Create project in database with current user as creator
+	project, err := s.projectRepo.CreateProject(ctx, userID, userID, name, description)
 	if err != nil {
 		return nil, err
 	}
@@ -48,8 +48,8 @@ func (s *projectService) CreateProject(ctx context.Context, userID int, name, de
 }
 
 // GetProject retrieves a project by ID
-func (s *projectService) GetProject(ctx context.Context, id int) (*domain.Project, error) {
-	if id <= 0 {
+func (s *projectService) GetProject(ctx context.Context, id string) (*domain.Project, error) {
+	if id == "" {
 		return nil, apperrors.NewValidationError(apperrors.ErrInvalidInput, "invalid project ID")
 	}
 
@@ -61,8 +61,8 @@ func (s *projectService) GetProject(ctx context.Context, id int) (*domain.Projec
 	return project, nil
 }
 
-// ListProjects retrieves all projects for a user with pagination
-func (s *projectService) ListProjects(ctx context.Context, userID, page, pageSize int) ([]domain.Project, int, error) {
+// ListProjects retrieves all projects with pagination (shared across all users)
+func (s *projectService) ListProjects(ctx context.Context, userID string, page, pageSize int) ([]domain.Project, int, error) {
 	// Validate pagination parameters
 	if page < 1 {
 		page = 1
@@ -82,7 +82,7 @@ func (s *projectService) ListProjects(ctx context.Context, userID, page, pageSiz
 }
 
 // UpdateProject updates a project with validation
-func (s *projectService) UpdateProject(ctx context.Context, id int, name, description string) (*domain.Project, error) {
+func (s *projectService) UpdateProject(ctx context.Context, id string, name, description string) (*domain.Project, error) {
 	// Validate project name
 	if appErr := utils.ValidateProjectName(name); appErr != nil {
 		return nil, appErr
@@ -103,8 +103,8 @@ func (s *projectService) UpdateProject(ctx context.Context, id int, name, descri
 }
 
 // DeleteProject deletes a project
-func (s *projectService) DeleteProject(ctx context.Context, id int) error {
-	if id <= 0 {
+func (s *projectService) DeleteProject(ctx context.Context, id string) error {
+	if id == "" {
 		return apperrors.NewValidationError(apperrors.ErrInvalidInput, "invalid project ID")
 	}
 

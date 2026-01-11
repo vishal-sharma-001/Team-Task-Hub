@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
+	apperrors "github.com/launchventures/team-task-hub-backend/internal/errors"
 	"github.com/launchventures/team-task-hub-backend/internal/service"
 	"github.com/launchventures/team-task-hub-backend/internal/utils"
 )
@@ -30,12 +31,7 @@ func (h *taskHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	projectID, err := strconv.Atoi(chi.URLParam(r, "project_id"))
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(NewErrorResponse(err))
-		return
-	}
+	projectID := chi.URLParam(r, "project_id")
 
 	var req CreateTaskRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -53,8 +49,8 @@ func (h *taskHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// If assignee is provided, assign the task
-	if req.AssigneeID != nil && *req.AssigneeID > 0 {
-		_ = h.taskService.AssignTask(ctx, task.ID, *req.AssigneeID)
+	if req.AssigneeID != nil && *req.AssigneeID != "" {
+		_ = h.taskService.AssignTask(ctx, task.ID, *req.AssigneeID, userID)
 	}
 
 	w.WriteHeader(http.StatusCreated)
@@ -72,12 +68,7 @@ func (h *taskHandler) ListTasks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	projectID, err := strconv.Atoi(chi.URLParam(r, "project_id"))
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(NewErrorResponse(err))
-		return
-	}
+	projectID := chi.URLParam(r, "project_id")
 
 	// Parse pagination parameters
 	page := 1
@@ -165,12 +156,7 @@ func (h *taskHandler) GetTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	taskID, err := strconv.Atoi(chi.URLParam(r, "task_id"))
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(NewErrorResponse(err))
-		return
-	}
+	taskID := chi.URLParam(r, "task_id")
 
 	ctx := context.Background()
 	task, err := h.taskService.GetTask(ctx, taskID)
@@ -188,19 +174,14 @@ func (h *taskHandler) GetTask(w http.ResponseWriter, r *http.Request) {
 func (h *taskHandler) UpdateTask(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	_, err := utils.ExtractUserIDFromContext(r.Context())
+	userID, err := utils.ExtractUserIDFromContext(r.Context())
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		json.NewEncoder(w).Encode(NewErrorResponse(err))
 		return
 	}
 
-	taskID, err := strconv.Atoi(chi.URLParam(r, "task_id"))
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(NewErrorResponse(err))
-		return
-	}
+	taskID := chi.URLParam(r, "task_id")
 
 	var req UpdateTaskRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -240,8 +221,8 @@ func (h *taskHandler) UpdateTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// If assignee was set, create assignment record
-	if req.AssigneeID != nil {
-		_ = h.taskService.AssignTask(ctx, task.ID, *req.AssigneeID)
+	if req.AssigneeID != nil && *req.AssigneeID != "" {
+		_ = h.taskService.AssignTask(ctx, task.ID, *req.AssigneeID, userID)
 	}
 
 	w.WriteHeader(http.StatusOK)
@@ -259,12 +240,7 @@ func (h *taskHandler) UpdateTaskStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	taskID, err := strconv.Atoi(chi.URLParam(r, "task_id"))
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(NewErrorResponse(err))
-		return
-	}
+	taskID := chi.URLParam(r, "task_id")
 
 	var req UpdateTaskStatusRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -274,7 +250,7 @@ func (h *taskHandler) UpdateTaskStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := context.Background()
-	// Get current task first to preserve other fields
+	// Get current task to preserve other fields
 	task, err := h.taskService.GetTask(ctx, taskID)
 	if err != nil {
 		w.WriteHeader(ErrorToStatusCode(err))
@@ -305,12 +281,7 @@ func (h *taskHandler) UpdateTaskPriority(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	taskID, err := strconv.Atoi(chi.URLParam(r, "task_id"))
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(NewErrorResponse(err))
-		return
-	}
+	taskID := chi.URLParam(r, "task_id")
 
 	var req UpdateTaskPriorityRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -343,38 +314,40 @@ func (h *taskHandler) UpdateTaskPriority(w http.ResponseWriter, r *http.Request)
 func (h *taskHandler) UpdateTaskAssignee(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	_, err := utils.ExtractUserIDFromContext(r.Context())
+	userID, err := utils.ExtractUserIDFromContext(r.Context())
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		json.NewEncoder(w).Encode(NewErrorResponse(err))
 		return
 	}
 
-	taskID, err := strconv.Atoi(chi.URLParam(r, "task_id"))
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(NewErrorResponse(err))
-		return
-	}
+	taskID := chi.URLParam(r, "task_id")
 
 	var req UpdateTaskAssigneeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(NewErrorResponse(err))
+		json.NewEncoder(w).Encode(NewErrorResponse(apperrors.NewValidationError(apperrors.ErrInvalidInput, "assignee_id must be a string UUID")))
 		return
 	}
 
 	ctx := context.Background()
-	// Get current task first to preserve other fields
-	task, err := h.taskService.GetTask(ctx, taskID)
-	if err != nil {
-		w.WriteHeader(ErrorToStatusCode(err))
-		json.NewEncoder(w).Encode(NewErrorResponse(err))
-		return
+	// If no assignee provided, clear assignment; otherwise set assignee and who assigned
+	if req.AssigneeID == nil || *req.AssigneeID == "" {
+		if err := h.taskService.UnassignTask(ctx, taskID); err != nil {
+			w.WriteHeader(ErrorToStatusCode(err))
+			json.NewEncoder(w).Encode(NewErrorResponse(err))
+			return
+		}
+	} else {
+		if err := h.taskService.AssignTask(ctx, taskID, *req.AssigneeID, userID); err != nil {
+			w.WriteHeader(ErrorToStatusCode(err))
+			json.NewEncoder(w).Encode(NewErrorResponse(err))
+			return
+		}
 	}
 
-	// Update only the assignee, preserve other fields
-	updatedTask, err := h.taskService.UpdateTask(ctx, taskID, task.Title, task.Description, task.Status, task.Priority, req.AssigneeID, nil)
+	// Return fresh task with populated users
+	updatedTask, err := h.taskService.GetTask(ctx, taskID)
 	if err != nil {
 		w.WriteHeader(ErrorToStatusCode(err))
 		json.NewEncoder(w).Encode(NewErrorResponse(err))
@@ -388,19 +361,14 @@ func (h *taskHandler) UpdateTaskAssignee(w http.ResponseWriter, r *http.Request)
 func (h *taskHandler) AssignTask(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	_, err := utils.ExtractUserIDFromContext(r.Context())
+	userID, err := utils.ExtractUserIDFromContext(r.Context())
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		json.NewEncoder(w).Encode(NewErrorResponse(err))
 		return
 	}
 
-	taskID, err := strconv.Atoi(chi.URLParam(r, "task_id"))
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(NewErrorResponse(err))
-		return
-	}
+	taskID := chi.URLParam(r, "task_id")
 
 	var req AssignTaskRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -410,7 +378,7 @@ func (h *taskHandler) AssignTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := context.Background()
-	err = h.taskService.AssignTask(ctx, taskID, req.UserID)
+	err = h.taskService.AssignTask(ctx, taskID, req.UserID, userID)
 	if err != nil {
 		w.WriteHeader(ErrorToStatusCode(err))
 		json.NewEncoder(w).Encode(NewErrorResponse(err))
@@ -432,12 +400,7 @@ func (h *taskHandler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	taskID, err := strconv.Atoi(chi.URLParam(r, "task_id"))
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(NewErrorResponse(err))
-		return
-	}
+	taskID := chi.URLParam(r, "task_id")
 
 	ctx := context.Background()
 	err = h.taskService.DeleteTask(ctx, taskID)

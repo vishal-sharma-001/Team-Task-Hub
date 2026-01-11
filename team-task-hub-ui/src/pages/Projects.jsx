@@ -8,6 +8,9 @@ import ProjectForm from '../components/ProjectForm';
 import Modal from '../components/Modal';
 import ConfirmDialog from '../components/ConfirmDialog';
 
+// Helper function to shorten UUID to first 8 characters
+const shortenId = (id) => id?.substring(0, 8) || '-';
+
 function Projects() {
   const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
@@ -204,6 +207,7 @@ function Projects() {
                 <SortHeader field="id" label="ID" />
                 <SortHeader field="name" label="Project Name" />
                 <SortHeader field="description" label="Description" />
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">Created By</th>
                 <SortHeader field="created_at" label="Created" />
               </tr>
             </thead>
@@ -214,13 +218,34 @@ function Projects() {
                   onClick={() => navigate(`/projects/${project.id}/tasks`)}
                   className="cursor-pointer hover:bg-gray-50 transition-colors"
                 >
-                  <td className="px-6 py-3 text-sm text-gray-900">{project.id}</td>
+                  <td className="px-6 py-3 text-sm font-mono text-gray-600">{shortenId(project.id)}</td>
                   <td 
                     className="px-6 py-3 text-sm font-medium text-gray-900"
                   >
                     {project.name}
                   </td>
                   <td className="px-6 py-3 text-sm text-gray-600">{project.description || '-'}</td>
+                  <td className="px-6 py-3 text-sm">
+                    {project.created_by?.email ? (
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-full bg-purple-100 flex items-center justify-center">
+                          <span className="text-xs font-medium text-purple-700">
+                            {(project.created_by.name || project.created_by.email).charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium text-gray-900">
+                            {project.created_by.name || project.created_by.email.split('@')[0]}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {project.created_by.name ? project.created_by.email : project.created_by.email.split('@')[1]}
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-gray-500">-</span>
+                    )}
+                  </td>
                   <td className="px-6 py-3 text-sm text-gray-500">
                     {new Date(project.created_at).toLocaleDateString()}
                   </td>
@@ -228,7 +253,7 @@ function Projects() {
               ))}
               {paginatedProjects.length === 0 && (
                 <tr>
-                  <td colSpan="4" className="px-6 py-8 text-center text-sm text-gray-500">
+                  <td colSpan="5" className="px-6 py-8 text-center text-sm text-gray-500">
                     No projects found
                   </td>
                 </tr>

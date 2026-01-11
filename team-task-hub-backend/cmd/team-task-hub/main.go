@@ -68,6 +68,15 @@ func runMigrations(dbURL string) error {
 	}
 	defer m.Close()
 
+	// Check if database is dirty and try to fix it
+	v, dirty, err := m.Version()
+	if dirty {
+		log.Printf("Database is dirty at version %d, attempting to force version 0...", v)
+		if err := m.Force(0); err != nil {
+			log.Printf("Force failed, attempting to proceed anyway: %v", err)
+		}
+	}
+
 	if err = m.Up(); err != nil && err != migrate.ErrNoChange {
 		return fmt.Errorf("migration up failed: %w", err)
 	}

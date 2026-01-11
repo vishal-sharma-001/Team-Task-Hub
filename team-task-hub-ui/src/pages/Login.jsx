@@ -32,26 +32,26 @@ function Login({ setUser }) {
         setIsLoading(true);
         setApiError('');
         try {
-          console.log('Attempting login with:', formData.email);
           const response = await authAPI.login(formData);
-          console.log('Login response:', response);
           
           if (!response || !response.token || !response.user) {
             throw new Error('Invalid response from server');
           }
           
-          // Store data
+          // Store token
           localStorage.setItem('authToken', response.token);
-          localStorage.setItem('user', JSON.stringify(response.user));
           
-          console.log('Stored user:', response.user);
-          console.log('Calling setUser...');
-          setUser(response.user);
+          // Fetch full user profile
+          const profileResponse = await authAPI.getProfile();
+          const userProfile = profileResponse.data || profileResponse;
+          
+          // Store complete user data
+          localStorage.setItem('user', JSON.stringify(userProfile));
+          
+          setUser(userProfile);
           
           // Navigate after state update
-          console.log('Navigating to dashboard...');
           setTimeout(() => {
-            console.log('Navigation timeout executed');
             navigate('/dashboard');
           }, 100);
         } catch (error) {

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"log"
 
 	"github.com/launchventures/team-task-hub-backend/internal/domain"
 	apperrors "github.com/launchventures/team-task-hub-backend/internal/errors"
@@ -13,8 +14,8 @@ import (
 type UserService interface {
 	SignUp(ctx context.Context, email, password string) (*domain.User, string, error)
 	Login(ctx context.Context, email, password string) (*domain.User, string, error)
-	GetProfile(ctx context.Context, userID int) (*domain.User, error)
-	UpdateProfile(ctx context.Context, userID int, email string) (*domain.User, error)
+	GetProfile(ctx context.Context, userID string) (*domain.User, error)
+	UpdateProfile(ctx context.Context, userID string, email string) (*domain.User, error)
 	ListUsers(ctx context.Context) ([]domain.User, error)
 }
 
@@ -29,32 +30,43 @@ func NewUserService(userRepo repository.UserRepository) UserService {
 // SignUp creates a new user account
 func (s *userService) SignUp(ctx context.Context, email, password string) (*domain.User, string, error) {
 	// Validate inputs
+	log.Printf("[Service.SignUp] Starting signup for email: %s", email)
+
 	if appErr := utils.ValidateEmail(email); appErr != nil {
+		log.Printf("[Service.SignUp] Email validation failed: %v", appErr)
 		return nil, "", appErr
 	}
 
 	if appErr := utils.ValidatePassword(password); appErr != nil {
+		log.Printf("[Service.SignUp] Password validation failed: %v", appErr)
 		return nil, "", appErr
 	}
 
 	// Hash password
+	log.Printf("[Service.SignUp] Hashing password")
 	hashedPassword, err := utils.HashPassword(password)
 	if err != nil {
+		log.Printf("[Service.SignUp] Hash error: %v", err)
 		return nil, "", apperrors.NewInternalError("failed to hash password", err)
 	}
 
 	// Create user in database
+	log.Printf("[Service.SignUp] Creating user in database")
 	user, err := s.userRepo.CreateUser(ctx, email, hashedPassword)
 	if err != nil {
+		log.Printf("[Service.SignUp] CreateUser error: %v, Type: %T", err, err)
 		return nil, "", err
 	}
 
 	// Generate JWT token
+	log.Printf("[Service.SignUp] Generating token")
 	token, err := utils.GenerateToken(user.ID, user.Email)
 	if err != nil {
+		log.Printf("[Service.SignUp] Token generation error: %v", err)
 		return nil, "", apperrors.NewInternalError("failed to generate token", err)
 	}
 
+	log.Printf("[Service.SignUp] SignUp successful for user: %s", user.ID)
 	return user, token, nil
 }
 
@@ -86,7 +98,7 @@ func (s *userService) Login(ctx context.Context, email, password string) (*domai
 }
 
 // GetProfile retrieves the current user's profile
-func (s *userService) GetProfile(ctx context.Context, userID int) (*domain.User, error) {
+func (s *userService) GetProfile(ctx context.Context, userID string) (*domain.User, error) {
 	user, err := s.userRepo.GetUserByID(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -96,7 +108,7 @@ func (s *userService) GetProfile(ctx context.Context, userID int) (*domain.User,
 }
 
 // UpdateProfile updates the current user's profile
-func (s *userService) UpdateProfile(ctx context.Context, userID int, name string) (*domain.User, error) {
+func (s *userService) UpdateProfile(ctx context.Context, userID string, name string) (*domain.User, error) {
 	// Update user in database
 	user, err := s.userRepo.UpdateUser(ctx, userID, name)
 	if err != nil {

@@ -92,12 +92,7 @@ func (h *projectHandler) ListProjects(w http.ResponseWriter, r *http.Request) {
 func (h *projectHandler) GetProject(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	projectID, err := strconv.Atoi(chi.URLParam(r, "project_id"))
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(NewErrorResponse(err))
-		return
-	}
+	projectID := chi.URLParam(r, "project_id")
 
 	ctx := context.Background()
 	project, err := h.projectService.GetProject(ctx, projectID)
@@ -122,12 +117,7 @@ func (h *projectHandler) UpdateProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	projectID, err := strconv.Atoi(chi.URLParam(r, "project_id"))
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(NewErrorResponse(err))
-		return
-	}
+	projectID := chi.URLParam(r, "project_id")
 
 	var req UpdateProjectRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -137,7 +127,6 @@ func (h *projectHandler) UpdateProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := context.Background()
-	// TODO: Add ownership verification in service layer
 	project, err := h.projectService.UpdateProject(ctx, projectID, req.Name, req.Description)
 	if err != nil {
 		w.WriteHeader(ErrorToStatusCode(err))
@@ -160,15 +149,9 @@ func (h *projectHandler) DeleteProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	projectID, err := strconv.Atoi(chi.URLParam(r, "project_id"))
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(NewErrorResponse(err))
-		return
-	}
+	projectID := chi.URLParam(r, "project_id")
 
 	ctx := context.Background()
-	// TODO: Add ownership verification in service layer
 	err = h.projectService.DeleteProject(ctx, projectID)
 	if err != nil {
 		w.WriteHeader(ErrorToStatusCode(err))

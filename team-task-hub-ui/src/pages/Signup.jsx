@@ -43,9 +43,7 @@ function Signup({ setUser }) {
         setIsLoading(true);
         setApiError('');
         try {
-          console.log('Attempting signup with:', formData.email);
           const response = await authAPI.signup(formData);
-          console.log('Signup response:', response);
           
           if (!response || !response.token || !response.user) {
             throw new Error('Invalid response from server');
@@ -55,14 +53,10 @@ function Signup({ setUser }) {
           localStorage.setItem('authToken', response.token);
           localStorage.setItem('user', JSON.stringify(response.user));
           
-          console.log('Stored user:', response.user);
-          console.log('Calling setUser...');
           setUser(response.user);
           
           // Navigate after state update
-          console.log('Navigating to dashboard...');
           setTimeout(() => {
-            console.log('Navigation timeout executed');
             navigate('/dashboard');
           }, 100);
         } catch (error) {

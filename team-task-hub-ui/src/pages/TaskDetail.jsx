@@ -155,7 +155,7 @@ function TaskDetail() {
       } else if (field === 'priority') {
         await taskAPI.updatePriority(taskId, newValue);
       } else if (field === 'assignee_id') {
-        const assigneeId = newValue ? parseInt(newValue) : null;
+        const assigneeId = newValue || null; // keep UUID string
         await taskAPI.updateAssignee(taskId, assigneeId);
       } else {
         // For other fields (title, description, due_date), use PUT
@@ -177,6 +177,8 @@ function TaskDetail() {
   if (!task) return <ErrorMessage message="Task not found" />;
 
   const assigneeUser = task.assignee_id ? users[task.assignee_id] : null;
+  const createdByUser = task.created_by_id ? users[task.created_by_id] : null;
+  const assignedByUser = task.assigned_by_id ? users[task.assigned_by_id] : null;
 
   return (
     <div className="min-h-screen bg-white">
@@ -201,7 +203,6 @@ function TaskDetail() {
               <div className="mb-8">
                 {editingField === 'title' ? (
                   <input
-                    autoFocus
                     type="text"
                     value={editValues.title !== undefined ? editValues.title : task.title}
                     onChange={(e) => setEditValues({ ...editValues, title: e.target.value })}
@@ -231,7 +232,6 @@ function TaskDetail() {
                 <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Description</h3>
                 {editingField === 'description' ? (
                   <textarea
-                    autoFocus
                     value={editValues.description !== undefined ? editValues.description : (task.description || '')}
                     onChange={(e) => setEditValues({ ...editValues, description: e.target.value })}
                     onBlur={() => handleInlineEdit('description')}
@@ -288,7 +288,6 @@ function TaskDetail() {
                 <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Status</p>
                 {editingField === 'status' ? (
                   <select
-                    autoFocus
                     value={task.status}
                     onChange={(e) => handleInlineEdit('status', e.target.value)}
                     onBlur={() => setEditingField(null)}
@@ -350,6 +349,7 @@ function TaskDetail() {
                     autoFocus
                     type="date"
                     value={editValues.due_date !== undefined ? editValues.due_date : (task?.due_date ? (typeof task.due_date === 'string' ? task.due_date.split('T')[0] : task.due_date) : '')}
+                    min={new Date().toISOString().split('T')[0]}
                     onChange={(e) => setEditValues({ ...editValues, due_date: e.target.value })}
                     onBlur={() => {
                       if (editValues.due_date) {
@@ -432,6 +432,42 @@ function TaskDetail() {
                       <span className="text-slate-500">Unassigned</span>
                     )}
                   </button>
+                )}
+              </div>
+
+              {/* Created By */}
+              <div className="mb-4 pb-4 border-b border-gray-200">
+                <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">Created By</p>
+                {createdByUser ? (
+                  <div className="flex items-center gap-2 px-2 py-2 rounded bg-purple-50">
+                    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
+                      {createdByUser.email.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">{createdByUser.email.split('@')[0]}</p>
+                      <p className="text-xs text-gray-600 truncate">{createdByUser.email.split('@')[1]}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <span className="text-slate-500">Unknown</span>
+                )}
+              </div>
+
+              {/* Assigned By */}
+              <div className="mb-4 pb-4 border-b border-gray-200">
+                <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">Assigned By</p>
+                {assignedByUser ? (
+                  <div className="flex items-center gap-2 px-2 py-2 rounded bg-orange-50">
+                    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
+                      {assignedByUser.email.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">{assignedByUser.email.split('@')[0]}</p>
+                      <p className="text-xs text-gray-600 truncate">{assignedByUser.email.split('@')[1]}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <span className="text-slate-500">Not assigned</span>
                 )}
               </div>
 

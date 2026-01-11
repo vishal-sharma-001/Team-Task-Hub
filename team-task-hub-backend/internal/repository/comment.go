@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/launchventures/team-task-hub-backend/internal/domain"
@@ -12,12 +13,12 @@ import (
 
 // CommentRepository defines comment data access operations
 type CommentRepository interface {
-	CreateComment(ctx context.Context, taskID, userID int, content string) (*domain.Comment, error)
-	GetCommentByID(ctx context.Context, id int) (*domain.Comment, error)
-	ListCommentsByTaskID(ctx context.Context, taskID, limit, offset int) ([]domain.Comment, int, error)
+	CreateComment(ctx context.Context, taskID, userID string, content string) (*domain.Comment, error)
+	GetCommentByID(ctx context.Context, id string) (*domain.Comment, error)
+	ListCommentsByTaskID(ctx context.Context, taskID string, limit, offset int) ([]domain.Comment, int, error)
 	ListRecentComments(ctx context.Context, limit, offset int) ([]domain.Comment, int, error)
-	UpdateComment(ctx context.Context, id int, content string) (*domain.Comment, error)
-	DeleteComment(ctx context.Context, id int) error
+	UpdateComment(ctx context.Context, id string, content string) (*domain.Comment, error)
+	DeleteComment(ctx context.Context, id string) error
 }
 
 type commentRepository struct {
@@ -29,15 +30,16 @@ func NewCommentRepository(db *pgxpool.Pool) CommentRepository {
 }
 
 // CreateComment creates a new comment
-func (r *commentRepository) CreateComment(ctx context.Context, taskID, userID int, content string) (*domain.Comment, error) {
+func (r *commentRepository) CreateComment(ctx context.Context, taskID, userID string, content string) (*domain.Comment, error) {
+	commentID := uuid.New().String()
 	const query = `
-		INSERT INTO comments (task_id, user_id, content, created_at, updated_at)
-		VALUES ($1, $2, $3, NOW(), NOW())
+		INSERT INTO comments (id, task_id, user_id, content, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, NOW(), NOW())
 		RETURNING id, task_id, user_id, content, created_at, updated_at
 	`
 
 	comment := &domain.Comment{}
-	err := r.db.QueryRow(ctx, query, taskID, userID, content).Scan(
+	err := r.db.QueryRow(ctx, query, commentID, taskID, userID, content).Scan(
 		&comment.ID,
 		&comment.TaskID,
 		&comment.UserID,
@@ -63,7 +65,7 @@ func (r *commentRepository) CreateComment(ctx context.Context, taskID, userID in
 }
 
 // GetCommentByID retrieves a comment by ID
-func (r *commentRepository) GetCommentByID(ctx context.Context, id int) (*domain.Comment, error) {
+func (r *commentRepository) GetCommentByID(ctx context.Context, id string) (*domain.Comment, error) {
 	const query = `
 		SELECT c.id, c.task_id, c.user_id, c.content, c.created_at, c.updated_at, u.email, COALESCE(u.name, u.email) as author_name
 		FROM comments c
@@ -94,7 +96,7 @@ func (r *commentRepository) GetCommentByID(ctx context.Context, id int) (*domain
 }
 
 // ListCommentsByTaskID retrieves all comments for a task with pagination
-func (r *commentRepository) ListCommentsByTaskID(ctx context.Context, taskID, limit, offset int) ([]domain.Comment, int, error) {
+func (r *commentRepository) ListCommentsByTaskID(ctx context.Context, taskID string, limit, offset int) ([]domain.Comment, int, error) {
 	countQuery := `SELECT COUNT(*) FROM comments WHERE task_id = $1`
 	var total int
 	err := r.db.QueryRow(ctx, countQuery, taskID).Scan(&total)
@@ -144,7 +146,7 @@ func (r *commentRepository) ListCommentsByTaskID(ctx context.Context, taskID, li
 }
 
 // UpdateComment updates a comment
-func (r *commentRepository) UpdateComment(ctx context.Context, id int, content string) (*domain.Comment, error) {
+func (r *commentRepository) UpdateComment(ctx context.Context, id string, content string) (*domain.Comment, error) {
 	const query = `
 		UPDATE comments
 		SET content = $1, updated_at = NOW()
@@ -182,7 +184,7 @@ func (r *commentRepository) UpdateComment(ctx context.Context, id int, content s
 }
 
 // DeleteComment deletes a comment
-func (r *commentRepository) DeleteComment(ctx context.Context, id int) error {
+func (r *commentRepository) DeleteComment(ctx context.Context, id string) error {
 	const query = `DELETE FROM comments WHERE id = $1`
 
 	result, err := r.db.Exec(ctx, query, id)

@@ -27,7 +27,7 @@ function TaskForm({ task, onSubmit, onCancel }) {
         description: task?.description || '',
         status: task?.status || 'OPEN',
         priority: task?.priority || 'MEDIUM',
-        assignee: task?.assignee_id ? String(task.assignee_id) : '',
+        assignee_id: task?.assignee_id ? String(task.assignee_id) : '',
         due_date: task?.due_date || '',
       },
       {
@@ -121,13 +121,13 @@ function TaskForm({ task, onSubmit, onCancel }) {
 
         <div className="grid grid-cols-2 gap-6">
           <div className="space-y-2">
-            <label htmlFor="assignee" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="assignee_id" className="block text-sm font-medium text-gray-700">
               Assignee
             </label>
             <select
-              id="assignee"
-              name="assignee"
-              value={values.assignee}
+              id="assignee_id"
+              name="assignee_id"
+              value={values.assignee_id}
               onChange={handleChange}
               onBlur={handleBlur}
               className="input w-full"
@@ -153,6 +153,7 @@ function TaskForm({ task, onSubmit, onCancel }) {
               onChange={handleChange}
               onBlur={handleBlur}
               className="input w-full"
+              min={new Date().toISOString().split('T')[0]}
             />
           </div>
         </div>

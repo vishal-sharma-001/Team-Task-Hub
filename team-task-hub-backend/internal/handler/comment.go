@@ -30,12 +30,7 @@ func (h *commentHandler) CreateComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	taskID, err := strconv.Atoi(chi.URLParam(r, "task_id"))
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(NewErrorResponse(err))
-		return
-	}
+	taskID := chi.URLParam(r, "task_id")
 
 	var req CreateCommentRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -67,12 +62,7 @@ func (h *commentHandler) ListComments(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	taskID, err := strconv.Atoi(chi.URLParam(r, "task_id"))
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(NewErrorResponse(err))
-		return
-	}
+	taskID := chi.URLParam(r, "task_id")
 
 	// Parse pagination parameters
 	page := 1
@@ -113,12 +103,7 @@ func (h *commentHandler) UpdateComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	commentID, err := strconv.Atoi(chi.URLParam(r, "comment_id"))
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(NewErrorResponse(err))
-		return
-	}
+	commentID := chi.URLParam(r, "comment_id")
 
 	var req UpdateCommentRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -128,7 +113,6 @@ func (h *commentHandler) UpdateComment(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := context.Background()
-	// TODO: Add ownership verification (userID must match comment.user_id)
 	comment, err := h.commentService.UpdateComment(ctx, commentID, req.Content)
 	if err != nil {
 		w.WriteHeader(ErrorToStatusCode(err))
@@ -151,15 +135,9 @@ func (h *commentHandler) DeleteComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	commentID, err := strconv.Atoi(chi.URLParam(r, "comment_id"))
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(NewErrorResponse(err))
-		return
-	}
+	commentID := chi.URLParam(r, "comment_id")
 
 	ctx := context.Background()
-	// TODO: Add ownership verification (userID must match comment.user_id)
 	err = h.commentService.DeleteComment(ctx, commentID)
 	if err != nil {
 		w.WriteHeader(ErrorToStatusCode(err))

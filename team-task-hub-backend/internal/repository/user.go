@@ -3,8 +3,12 @@ package repository
 import (
 	"context"
 	"errors"
+	"log"
+	"strings"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/launchventures/team-task-hub-backend/internal/domain"
 	apperrors "github.com/launchventures/team-task-hub-backend/internal/errors"
@@ -13,9 +17,9 @@ import (
 // UserRepository defines user data access operations
 type UserRepository interface {
 	CreateUser(ctx context.Context, email, passwordHash string) (*domain.User, error)
-	GetUserByID(ctx context.Context, id int) (*domain.User, error)
+	GetUserByID(ctx context.Context, id string) (*domain.User, error)
 	GetUserByEmail(ctx context.Context, email string) (*domain.User, error)
-	UpdateUser(ctx context.Context, id int, email string) (*domain.User, error)
+	UpdateUser(ctx context.Context, id string, email string) (*domain.User, error)
 	ListUsers(ctx context.Context) ([]domain.User, error)
 }
 
@@ -29,14 +33,17 @@ func NewUserRepository(db *pgxpool.Pool) UserRepository {
 
 // CreateUser creates a new user in the database
 func (r *userRepository) CreateUser(ctx context.Context, email, passwordHash string) (*domain.User, error) {
+	log.Printf("[CreateUser] Starting creation for email: %s", email)
+	userID := uuid.New().String()
+	log.Printf("[CreateUser] Generated userID: %s", userID)
 	const query = `
-		INSERT INTO users (email, password_hash, name, created_at, updated_at)
-		VALUES ($1, $2, '', NOW(), NOW())
+		INSERT INTO users (id, email, password_hash, name, created_at, updated_at)
+		VALUES ($1, $2, $3, '', NOW(), NOW())
 		RETURNING id, email, name, password_hash, created_at, updated_at
 	`
 
 	user := &domain.User{}
-	err := r.db.QueryRow(ctx, query, email, passwordHash).Scan(
+	err := r.db.QueryRow(ctx, query, userID, email, passwordHash).Scan(
 		&user.ID,
 		&user.Email,
 		&user.Name,
@@ -46,19 +53,27 @@ func (r *userRepository) CreateUser(ctx context.Context, email, passwordHash str
 	)
 
 	if err != nil {
-		if err.Error() == "duplicate key value violates unique constraint \"users_email_key\"" {
-			return nil, apperrors.NewConflictError(apperrors.ErrEmailExists, "email already exists")
+		log.Printf("[CreateUser] Error occurred: %v", err)
+		// Check for duplicate key error (PostgreSQL)
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" { // 23505 is unique_violation
+			if strings.Contains(pgErr.ConstraintName, "email") {
+				log.Printf("[CreateUser] Duplicate email error")
+				return nil, apperrors.NewConflictError(apperrors.ErrEmailExists, "email already exists")
+			}
 		}
+		log.Printf("[CreateUser] Database error")
 		return nil, apperrors.NewDatabaseError("failed to create user", err)
 	}
 
+	log.Printf("[CreateUser] User created successfully: %s", user.ID)
 	return user, nil
 }
 
 // GetUserByID retrieves a user by ID
-func (r *userRepository) GetUserByID(ctx context.Context, id int) (*domain.User, error) {
+func (r *userRepository) GetUserByID(ctx context.Context, id string) (*domain.User, error) {
 	const query = `
-		SELECT id, email, password_hash, created_at, updated_at
+		SELECT id, email, name, password_hash, created_at, updated_at
 		FROM users
 		WHERE id = $1
 	`
@@ -67,6 +82,7 @@ func (r *userRepository) GetUserByID(ctx context.Context, id int) (*domain.User,
 	err := r.db.QueryRow(ctx, query, id).Scan(
 		&user.ID,
 		&user.Email,
+		&user.Name,
 		&user.PasswordHash,
 		&user.CreatedAt,
 		&user.UpdatedAt,
@@ -79,15 +95,13 @@ func (r *userRepository) GetUserByID(ctx context.Context, id int) (*domain.User,
 		return nil, apperrors.NewDatabaseError("failed to get user", err)
 	}
 
-	user.Name = "" // Set default empty name
-
 	return user, nil
 }
 
 // GetUserByEmail retrieves a user by email
 func (r *userRepository) GetUserByEmail(ctx context.Context, email string) (*domain.User, error) {
 	const query = `
-		SELECT id, email, password_hash, created_at, updated_at
+		SELECT id, email, name, password_hash, created_at, updated_at
 		FROM users
 		WHERE email = $1
 	`
@@ -96,6 +110,7 @@ func (r *userRepository) GetUserByEmail(ctx context.Context, email string) (*dom
 	err := r.db.QueryRow(ctx, query, email).Scan(
 		&user.ID,
 		&user.Email,
+		&user.Name,
 		&user.PasswordHash,
 		&user.CreatedAt,
 		&user.UpdatedAt,
@@ -108,15 +123,13 @@ func (r *userRepository) GetUserByEmail(ctx context.Context, email string) (*dom
 		return nil, apperrors.NewDatabaseError("failed to get user by email", err)
 	}
 
-	user.Name = "" // Set default empty name
-
 	return user, nil
 }
 
 // ListUsers retrieves all users
 func (r *userRepository) ListUsers(ctx context.Context) ([]domain.User, error) {
 	const query = `
-		SELECT id, email, password_hash, created_at, updated_at
+		SELECT id, email, COALESCE(name, '') as name, password_hash, created_at, updated_at
 		FROM users
 		ORDER BY email ASC
 	`
@@ -133,6 +146,7 @@ func (r *userRepository) ListUsers(ctx context.Context) ([]domain.User, error) {
 		err := rows.Scan(
 			&u.ID,
 			&u.Email,
+			&u.Name,
 			&u.PasswordHash,
 			&u.CreatedAt,
 			&u.UpdatedAt,
@@ -140,7 +154,6 @@ func (r *userRepository) ListUsers(ctx context.Context) ([]domain.User, error) {
 		if err != nil {
 			return nil, apperrors.NewDatabaseError("failed to scan user", err)
 		}
-		u.Name = "" // Set default empty name
 		users = append(users, u)
 	}
 
@@ -152,7 +165,7 @@ func (r *userRepository) ListUsers(ctx context.Context) ([]domain.User, error) {
 }
 
 // UpdateUser updates a user's profile
-func (r *userRepository) UpdateUser(ctx context.Context, id int, name string) (*domain.User, error) {
+func (r *userRepository) UpdateUser(ctx context.Context, id string, name string) (*domain.User, error) {
 	const query = `
 		UPDATE users
 		SET name = $2, updated_at = NOW()
