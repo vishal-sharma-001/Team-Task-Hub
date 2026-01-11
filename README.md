@@ -1,10 +1,10 @@
+# Demo
+
+https://github.com/user-attachments/assets/9254ffb7-24ae-4a46-a018-d133bbd19352
+
 # Team Task Hub
 
 A full-stack task management application built with Go backend and React frontend, enabling teams to collaborate on projects and tasks.
-
-# Demo
-[TeamTaskHub-Demo.webm](https://github.com/user-attachments/assets/7cc1e9a2-2e78-4f7a-8816-588dbb56e218)
-
 
 ## Features
 
