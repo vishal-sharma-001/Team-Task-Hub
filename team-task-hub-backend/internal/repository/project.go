@@ -43,45 +43,45 @@ func (r *projectRepository) CreateProject(ctx context.Context, userID, createdBy
 			LEFT JOIN users cb ON i.created_by_id = cb.id
 		`
 
-		project := &domain.Project{}
-		var creatorID *string
-		var creatorEmail *string
-		var creatorName *string
-		err := r.db.QueryRow(ctx, query, projectID, userID, name, description, createdByID).Scan(
-			&project.ID,
-			&project.UserID,
-			&project.Name,
-			&project.Description,
-			&creatorID,
-			&project.CreatedAt,
-			&project.UpdatedAt,
-			&creatorID,
-			&creatorEmail,
-			&creatorName,
-		)
+	project := &domain.Project{}
+	var creatorID *string
+	var creatorEmail *string
+	var creatorName *string
+	err := r.db.QueryRow(ctx, query, projectID, userID, name, description, createdByID).Scan(
+		&project.ID,
+		&project.UserID,
+		&project.Name,
+		&project.Description,
+		&creatorID,
+		&project.CreatedAt,
+		&project.UpdatedAt,
+		&creatorID,
+		&creatorEmail,
+		&creatorName,
+	)
 
-		if err != nil {
-			return nil, apperrors.NewDatabaseError("failed to create project", err)
+	if err != nil {
+		return nil, apperrors.NewDatabaseError("failed to create project", err)
+	}
+
+	if creatorID != nil {
+		project.CreatedByID = creatorID
+		email := ""
+		name := ""
+		if creatorEmail != nil {
+			email = *creatorEmail
 		}
-
-		if creatorID != nil {
-			project.CreatedByID = creatorID
-			email := ""
-			name := ""
-			if creatorEmail != nil {
-				email = *creatorEmail
-			}
-			if creatorName != nil {
-				name = *creatorName
-			}
-			project.CreatedBy = &domain.User{
-				ID:    *creatorID,
-				Email: email,
-				Name:  name,
-			}
+		if creatorName != nil {
+			name = *creatorName
 		}
+		project.CreatedBy = &domain.User{
+			ID:    *creatorID,
+			Email: email,
+			Name:  name,
+		}
+	}
 
-		return project, nil
+	return project, nil
 }
 
 // GetProjectByID retrieves a project by ID
@@ -210,48 +210,48 @@ func (r *projectRepository) UpdateProject(ctx context.Context, id string, name, 
 			LEFT JOIN users cb ON u.created_by_id = cb.id
 		`
 
-		project := &domain.Project{}
-		var creatorID *string
-		var creatorEmail *string
-		var creatorName *string
-		err := r.db.QueryRow(ctx, query, name, description, id).Scan(
-			&project.ID,
-			&project.UserID,
-			&project.Name,
-			&project.Description,
-			&creatorID,
-			&project.CreatedAt,
-			&project.UpdatedAt,
-			&creatorID,
-			&creatorEmail,
-			&creatorName,
-		)
+	project := &domain.Project{}
+	var creatorID *string
+	var creatorEmail *string
+	var creatorName *string
+	err := r.db.QueryRow(ctx, query, name, description, id).Scan(
+		&project.ID,
+		&project.UserID,
+		&project.Name,
+		&project.Description,
+		&creatorID,
+		&project.CreatedAt,
+		&project.UpdatedAt,
+		&creatorID,
+		&creatorEmail,
+		&creatorName,
+	)
 
-		if err != nil {
-			if errors.Is(err, pgx.ErrNoRows) {
-				return nil, apperrors.NewNotFoundError(apperrors.ErrProjectNotFound, "project not found")
-			}
-			return nil, apperrors.NewDatabaseError("failed to update project", err)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, apperrors.NewNotFoundError(apperrors.ErrProjectNotFound, "project not found")
 		}
+		return nil, apperrors.NewDatabaseError("failed to update project", err)
+	}
 
-		if creatorID != nil {
-			project.CreatedByID = creatorID
-			email := ""
-			name := ""
-			if creatorEmail != nil {
-				email = *creatorEmail
-			}
-			if creatorName != nil {
-				name = *creatorName
-			}
-			project.CreatedBy = &domain.User{
-				ID:    *creatorID,
-				Email: email,
-				Name:  name,
-			}
+	if creatorID != nil {
+		project.CreatedByID = creatorID
+		email := ""
+		name := ""
+		if creatorEmail != nil {
+			email = *creatorEmail
 		}
+		if creatorName != nil {
+			name = *creatorName
+		}
+		project.CreatedBy = &domain.User{
+			ID:    *creatorID,
+			Email: email,
+			Name:  name,
+		}
+	}
 
-		return project, nil
+	return project, nil
 }
 
 // DeleteProject deletes a project (cascades to tasks)

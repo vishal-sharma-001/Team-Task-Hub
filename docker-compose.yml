@@ -1,0 +1,69 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: task-hub-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_password
+      POSTGRES_DB: task_hub
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - task-hub-network
+
+  # Go Backend
+  backend:
+    build:
+      context: ./team-task-hub-backend
+      dockerfile: Dockerfile
+    container_name: task-hub-backend
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres_password
+      DB_NAME: task_hub
+      JWT_SECRET: your_jwt_secret_key_change_in_production
+      PORT: 8080
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - task-hub-network
+    restart: unless-stopped
+
+  # React Frontend
+  frontend:
+    build:
+      context: ./team-task-hub-ui
+      dockerfile: Dockerfile
+    container_name: task-hub-frontend
+    ports:
+      - "3000:80"
+    environment:
+      VITE_API_URL: http://localhost:8080/api
+    depends_on:
+      - backend
+    networks:
+      - task-hub-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  task-hub-network:
+    driver: bridge
