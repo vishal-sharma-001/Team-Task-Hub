@@ -24,13 +24,14 @@ function TaskBoard() {
   const [projectName, setProjectName] = useState('');
   const [projectDesc, setProjectDesc] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortField, setSortField] = useState('created_at');
-  const [sortOrder, setSortOrder] = useState('desc');
+  const [sortField, setSortField] = useState('id');
+  const [sortOrder, setSortOrder] = useState('asc');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [filters, setFilters] = useState({
     status: '',
     priority: '',
+    assignee_id: '',
   });
   const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, taskId: null, taskName: '' });
   const [deleteProjectConfirm, setDeleteProjectConfirm] = useState({ isOpen: false, projectName: '' });
@@ -71,6 +72,7 @@ function TaskBoard() {
   const filteredTasks = tasks.filter((task) => {
     if (filters.status && task.status !== filters.status) return false;
     if (filters.priority && task.priority !== filters.priority) return false;
+    if (filters.assignee_id && task.assignee_id !== parseInt(filters.assignee_id)) return false;
     if (searchTerm && !task.title.toLowerCase().includes(searchTerm.toLowerCase())) {
       return false;
     }
@@ -368,16 +370,16 @@ function TaskBoard() {
         <>
           {/* Search and Filters - Only show when there are tasks */}
           {tasks.length > 0 && (
-            <div className="mb-6 flex gap-4 items-center justify-between">
-              <div className="flex gap-3 items-center">
-                <span className="text-sm font-medium text-slate-700">Filters:</span>
+            <div className="mb-6 flex gap-4 items-center">
+              <div className="flex gap-3 items-center flex-1">
+                <span className="text-sm font-medium text-slate-700 whitespace-nowrap">Filters:</span>
                 <select
                   value={filters.status}
                   onChange={(e) => {
                     setFilters({ ...filters, status: e.target.value });
                     setCurrentPage(1);
                   }}
-                  className="input text-sm border-slate-300"
+                  className="input text-sm border-slate-300 flex-1"
                 >
                   <option value="">All Status</option>
                   {TASK_STATUSES.map((status) => (
@@ -392,12 +394,27 @@ function TaskBoard() {
                     setFilters({ ...filters, priority: e.target.value });
                     setCurrentPage(1);
                   }}
-                  className="input text-sm border-slate-300"
+                  className="input text-sm border-slate-300 flex-1"
                 >
                   <option value="">All Priorities</option>
                   {TASK_PRIORITIES.map((priority) => (
                     <option key={priority} value={priority}>
                       {priority}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={filters.assignee_id}
+                  onChange={(e) => {
+                    setFilters({ ...filters, assignee_id: e.target.value });
+                    setCurrentPage(1);
+                  }}
+                  className="input text-sm border-slate-300 flex-1"
+                >
+                  <option value="">All Assignees</option>
+                  {users.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.email.split('@')[0]}
                     </option>
                   ))}
                 </select>
@@ -410,8 +427,9 @@ function TaskBoard() {
                   setSearchTerm(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="input search-input"
+                className="input search-input flex-1"
               />
+              <div className="w-20" />
             </div>
           )}
 
@@ -419,7 +437,7 @@ function TaskBoard() {
           <div className="overflow-x-auto mb-6 border border-slate-200 rounded-lg">
             <table className="w-full">
                 <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200">
+                  <tr className="bg-slate-100 border-b border-slate-200">
                     <SortHeader field="title" label="Title" />
                     <SortHeader field="status" label="Status" />
                     <SortHeader field="priority" label="Priority" />
@@ -431,14 +449,14 @@ function TaskBoard() {
                   {paginatedTasks.map((task) => (
                     <tr 
                       key={task.id} 
-                      className="border-b border-slate-200 hover:bg-slate-50 transition-colors"
+                      className="border-b border-slate-200 hover:bg-gray-50 transition-colors cursor-pointer"
                       onClick={(e) => {
                         if (e.target.tagName !== 'SELECT') {
                           navigate(`/tasks/${task.id}`);
                         }
                       }}
                     >
-                      <td className="px-6 py-4 font-medium text-slate-900 cursor-pointer">
+                      <td className="px-6 py-4 font-medium text-slate-900">
                         {task.title}
                       </td>
                       <td className="px-6 py-4">

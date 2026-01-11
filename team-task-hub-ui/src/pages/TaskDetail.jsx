@@ -96,7 +96,7 @@ function TaskDetail() {
     try {
       await taskAPI.delete(taskId);
       setDeleteConfirm({ isOpen: false, isComment: false, commentId: null, commentText: '' });
-      navigate('/projects');
+      navigate(`/projects/${task.project_id}/tasks`);
     } catch (err) {
       console.error('Failed to delete task:', err);
     }

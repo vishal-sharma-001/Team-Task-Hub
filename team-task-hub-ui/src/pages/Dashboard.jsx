@@ -95,22 +95,22 @@ function Dashboard() {
         {/* Header Section */}
         <div className="mb-12">
           <div className="flex items-center justify-between mb-2">
-            <h1 className="text-4xl font-bold text-gray-900">Dashboard</h1>
+            <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
             <span className="inline-flex items-center px-4 py-2 rounded-full bg-blue-50 text-blue-700 text-sm font-semibold">
               {assignedTasks.length} {assignedTasks.length === 1 ? 'task' : 'tasks'}
             </span>
           </div>
-          <p className="text-gray-600 text-base">Manage your assigned tasks and projects</p>
+          <p className="text-gray-600 text-sm">Manage your assigned tasks and projects</p>
         </div>
 
         {/* Tasks and Comments Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Tasks Section - 3 columns on large screens */}
-          <div className="lg:col-span-3">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Tasks Section - equal width on large screens */}
+          <div>
             <h2 className="text-2xl font-bold text-gray-900 mb-8">Assigned Tasks</h2>
             
             {assignedTasks.length === 0 ? (
-              <div className="bg-white p-12 text-center rounded-lg shadow-sm border border-gray-200">
+              <div className="bg-white p-8 text-center rounded-lg shadow-sm border border-gray-200">
                 <p className="text-gray-500 text-base">No tasks assigned yet</p>
               </div>
             ) : (
@@ -156,8 +156,8 @@ function Dashboard() {
             )}
           </div>
 
-          {/* Recent Comments Section - 1 column on large screens */}
-          <div className="lg:col-span-1">
+          {/* Recent Comments Section */}
+          <div>
             <h2 className="text-2xl font-bold text-gray-900 mb-8">Recent Comments</h2>
             {recentComments.length === 0 ? (
               <div className="bg-white p-8 text-center rounded-lg shadow-sm border border-gray-200">

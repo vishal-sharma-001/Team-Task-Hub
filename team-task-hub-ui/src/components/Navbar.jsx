@@ -26,9 +26,9 @@ function Navbar({ user, setUser }) {
           <div className="flex items-center gap-12">
             <button 
               onClick={() => navigate('/')} 
-              className="text-xl font-bold text-gray-900 hover:opacity-80 transition-opacity cursor-pointer bg-none border-none p-0"
+              className="text-lg font-bold text-gray-900 hover:opacity-80 transition-opacity cursor-pointer bg-none border-none p-0"
             >
-              📋 Task Hub
+              📋 Team Task Hub
             </button>
             <div className="hidden md:flex gap-8">
               <button 
@@ -52,7 +52,7 @@ function Navbar({ user, setUser }) {
               className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
             >
               <span className="text-gray-600">👤</span>
-              <span className="text-gray-700 text-sm font-medium">{user.email}</span>
+              <span className="text-gray-700 text-sm font-medium">{user.name || user.email}</span>
             </button>
             <button
               onClick={handleLogout}

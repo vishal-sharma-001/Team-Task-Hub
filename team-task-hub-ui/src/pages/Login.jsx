@@ -68,7 +68,7 @@ function Login({ setUser }) {
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-12">
           <div className="mb-10">
             <h1 className="text-4xl font-bold text-gray-900 mb-3">Welcome back</h1>
-            <p className="text-gray-600 text-base">Sign in to Task Hub to manage your projects and tasks</p>
+            <p className="text-gray-600 text-base">Sign in to Team Task Hub to manage your projects and tasks</p>
           </div>
 
           {apiError && <ErrorMessage message={apiError} />}
