@@ -59,71 +59,81 @@ team-task-hub/
     └── package.json
 ```
 
-## How to Run
+## Quick Start
 
 ### Prerequisites
-- Go 1.21 or higher
-- Node.js 16+ and npm
+- [Docker Desktop](https://www.docker.com/products/docker-desktop)
+- Make (or just use `docker-compose` directly)
+
+### Run the Application
+
+**Clone and run in one go:**
+```bash
+git clone https://github.com/vishal-sharma-001/Team-Task-Hub.git
+cd Team-Task-Hub
+make up
+```
+
+That's it! Docker automatically:
+- ✅ Sets up PostgreSQL database
+- ✅ Runs database migrations
+- ✅ Builds and starts the Go backend
+- ✅ Builds and starts the React frontend
+- ✅ Configures networking between services
+
+**Access the application:**
+- 🌐 **Frontend**: http://localhost:3000
+- ⚙️ **Backend API**: http://localhost:8080/api
+- 🗄️ **Database**: localhost:5432
+
+**Other useful commands:**
+```bash
+make down            # Stop all services
+make logs            # View logs
+make restart         # Restart services
+make clean           # Remove everything
+```
+
+See [DOCKER_COMPOSE.md](DOCKER_COMPOSE.md) for more options.
+
+---
+
+<details>
+<summary><b>📝 Manual Setup (Optional - for local development without Docker)</b></summary>
+
+### Prerequisites
+- Go 1.21+
+- Node.js 16+
 - PostgreSQL 12+
 
-### Backend Setup
+### Backend
+```bash
+cd team-task-hub-backend
+go mod download
 
-1. **Navigate to backend directory**
-   ```bash
-   cd team-task-hub-backend
-   ```
+# Create .env file with your database credentials
+cat > .env << EOF
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=your_password
+DB_NAME=task_hub
+JWT_SECRET=your_jwt_secret_key
+PORT=8080
+EOF
 
-2. **Install dependencies**
-   ```bash
-   go mod download
-   ```
+# Run (migrations happen automatically)
+go run ./cmd/team-task-hub/
+```
 
-3. **Configure environment variables**
-   Create/update `.env` file:
-   ```env
-   DB_HOST=localhost
-   DB_PORT=5432
-   DB_USER=postgres
-   DB_PASSWORD=your_password
-   DB_NAME=task_hub
-   JWT_SECRET=your_jwt_secret_key
-   PORT=8080
-   ```
+### Frontend
+```bash
+cd team-task-hub-ui
+npm install
+npm run dev  # Runs on http://localhost:5173
+```
 
-4. **Run database migrations**
-   ```bash
-   go run ./cmd/team-task-hub/
-   ```
-   The server will automatically run migrations on startup.
-
-5. **Start the server**
-   ```bash
-   go run ./cmd/team-task-hub/
-   ```
-   Server will be available at `http://localhost:8080`
-
-### Frontend Setup
-
-1. **Navigate to frontend directory**
-   ```bash
-   cd team-task-hub-ui
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Start development server**
-   ```bash
-   npm run dev
-   ```
-   Application will be available at `http://localhost:3001` (or next available port)
-
-4. **Build for production**
-   ```bash
-   npm run build
-   ```
+</details>
 
 ## Architecture Overview
 

@@ -9,7 +9,22 @@ This guide explains how to run the entire application stack using Docker Compose
 
 ## Quick Start
 
-1. **Create `docker-compose.yml` in project root:**
+Run this command from the project root:
+
+```bash
+make up
+```
+
+This builds and starts all services. Access the app at:
+- **Frontend:** http://localhost:3000
+- **Backend:** http://localhost:8080/api  
+- **Database:** localhost:5432 (postgres/postgres_password)
+
+---
+
+## Docker Files Included
+
+### 1. `docker-compose.yml` (project root)
 
 ```yaml
 version: '3.8'
@@ -83,7 +98,7 @@ networks:
     driver: bridge
 ```
 
-2. **Create `Dockerfile` for backend** (`team-task-hub-backend/Dockerfile`):
+### 2. Backend Dockerfile (`team-task-hub-backend/Dockerfile`)
 
 ```dockerfile
 # Build stage
@@ -117,7 +132,7 @@ EXPOSE 8080
 CMD ["./team-task-hub"]
 ```
 
-3. **Create `Dockerfile` for frontend** (`team-task-hub-ui/Dockerfile`):
+### 3. Frontend Dockerfile (`team-task-hub-ui/Dockerfile`)
 
 ```dockerfile
 # Build stage
@@ -182,73 +197,60 @@ docker-compose down
 # Remove volumes (data will be deleted)
 docker-compose down -v
 
-# Rebuild images
-docker-compose up -d --build
+## Common Commands
+
+```bash
+make up              # Build and start all services
+make down            # Stop all services  
+make logs            # View all logs (follow mode)
+make logs-backend    # View backend logs only
+make logs-frontend   # View frontend logs only
+make logs-db         # View database logs only
+make ps              # Show running containers
+make restart         # Restart all services
+make restart-backend # Restart backend only
+make restart-frontend # Restart frontend only
+make clean           # Remove all containers, images, volumes
 ```
 
-## Accessing the Application
+See [Makefile](Makefile) for all available commands.
 
-- **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:8080/api
-- **PostgreSQL**: localhost:5432
-
-## Environment Variables
-
-### Backend (.env or docker-compose.yml)
-
-- `DB_HOST`: Database host (postgres)
-- `DB_PORT`: Database port (5432)
-- `DB_USER`: Database user (postgres)
-- `DB_PASSWORD`: Database password
-- `DB_NAME`: Database name (task_hub)
-- `JWT_SECRET`: Secret key for JWT signing (change in production)
-- `PORT`: API port (8080)
-
-### Frontend
-
-- `VITE_API_URL`: Backend API URL (http://localhost:8080/api)
+---
 
 ## Production Considerations
 
-For production deployment:
+### Security
+- Change default database password
+- Use strong JWT secret
+- Enable HTTPS/SSL in Nginx
+- Set appropriate CORS headers
+- Use environment files for secrets (not committed to repo)
 
-1. **Security:**
-   - Change default database password
-   - Use strong JWT secret
-   - Enable HTTPS/SSL
-   - Set appropriate CORS headers
+### Database
+- Use managed PostgreSQL service (AWS RDS, Google Cloud SQL, Azure)
+- Enable automated backups
+- Configure resource limits
+- Set up monitoring and alerts
 
-2. **Database:**
-   - Use managed PostgreSQL service (AWS RDS, Cloud SQL, etc.)
-   - Enable automated backups
-   - Configure proper resource limits
+### Scaling
+- Use load balancer for multiple backend instances
+- Use CDN for frontend assets
+- Consider container orchestration (Kubernetes)
+- Implement rate limiting
 
-3. **Environment:**
-   - Use `.env` files (not committed to repo)
-   - Use secrets management (Docker Secrets, Kubernetes Secrets)
-   - Set NODE_ENV=production
-   - Enable logging and monitoring
-
-4. **Scaling:**
-   - Use load balancer for multiple backend instances
-   - Use CDN for frontend assets
-   - Consider container orchestration (Kubernetes)
-
-## Example Production docker-compose.yml
+### Example Production docker-compose.yml
 
 ```yaml
 version: '3.8'
 
 services:
   backend:
-    image: your-registry/task-hub-backend:latest
+    image: your-registry/task-hub-backend:v1.0
     environment:
       DB_HOST: ${DB_HOST}
       DB_PASSWORD: ${DB_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
     restart: always
-    networks:
-      - task-hub-network
     deploy:
       resources:
         limits:
@@ -256,38 +258,101 @@ services:
           memory: 512M
 
   frontend:
-    image: your-registry/task-hub-frontend:latest
+    image: your-registry/task-hub-frontend:v1.0
     environment:
       VITE_API_URL: ${API_URL}
     restart: always
-    networks:
-      - task-hub-network
     deploy:
       resources:
         limits:
           cpus: '0.5'
           memory: 256M
-
-networks:
-  task-hub-network:
 ```
+
+---
 
 ## Troubleshooting
 
-**Database connection fails:**
+### Database connection fails
+
 ```bash
-# Check database is healthy
+# Check if postgres container is running
 docker-compose ps postgres
 
-# Check logs
-docker-compose logs postgres
+# Check postgres logs
+make logs-db
+
+# Restart database
+docker-compose restart postgres
 ```
 
-**Backend can't connect to database:**
+### Backend can't reach database
+
 ```bash
-# Ensure postgres service is started first
+# Start only postgres first
 docker-compose up -d postgres
+
+# Wait a few seconds, then start backend
 docker-compose up -d backend
+
+# Check backend logs
+make logs-backend
+```
+
+### Frontend can't reach backend API
+
+```bash
+# Check if backend is running
+docker-compose ps backend
+
+# Check backend logs
+make logs-backend
+
+# Verify VITE_API_URL environment variable is set correctly
+docker-compose config | grep VITE_API_URL
+```
+
+### Build failures
+
+```bash
+# Clean up and rebuild
+make clean
+make up
+
+# Or with more verbosity
+docker-compose up --build --verbose
+```
+
+### Port already in use
+
+If port 3000, 8080, or 5432 is already in use, edit `docker-compose.yml` and change the host port mapping:
+
+```yaml
+frontend:
+  ports:
+    - "3001:80"  # Changed from 3000:80
+```
+
+---
+
+## Volume Management
+
+The database data is persisted in the `postgres_data` volume. To remove all data:
+
+```bash
+make clean  # Removes containers, images, and volumes
+```
+
+To backup the database:
+
+```bash
+docker exec task-hub-postgres pg_dump -U postgres task_hub > backup.sql
+```
+
+To restore the database:
+
+```bash
+docker exec -i task-hub-postgres psql -U postgres task_hub < backup.sql
 ```
 
 **Frontend can't reach API:**

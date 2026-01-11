@@ -3,6 +3,7 @@ package utils
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -11,8 +12,17 @@ import (
 
 const (
 	TokenExpiration = 24 * time.Hour
-	JWTSecret       = "your-secret-key-change-in-production"
 )
+
+// getJWTSecret loads JWT secret from environment or uses default
+func getJWTSecret() string {
+	if secret := os.Getenv("JWT_SECRET"); secret != "" {
+		return secret
+	}
+	return "your-secret-key-change-in-production"
+}
+
+var JWTSecret = getJWTSecret()
 
 type JWTClaims struct {
 	UserID string `json:"user_id"`

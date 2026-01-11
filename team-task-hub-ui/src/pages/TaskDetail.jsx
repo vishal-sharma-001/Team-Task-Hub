@@ -30,10 +30,7 @@ function TaskDetail() {
 
   const { execute: fetchTask, status: taskStatus, error: taskError } = useAsync(
     async () => {
-      const data = await taskAPI.getByID?.(taskId) || 
-                   (await fetch(`http://localhost:8080/api/tasks/${taskId}`, {
-                     headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` }
-                   }).then(r => r.json()).then(d => d.data || d));
+      const data = await taskAPI.getByID(taskId);
       return data;
     }
   );
