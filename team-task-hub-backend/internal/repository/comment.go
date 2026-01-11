@@ -50,15 +50,25 @@ func (r *commentRepository) CreateComment(ctx context.Context, taskID, userID in
 		return nil, apperrors.NewDatabaseError("failed to create comment", err)
 	}
 
+	// Fetch user info to populate author name
+	const userQuery = `SELECT email, COALESCE(name, email) as name FROM users WHERE id = $1`
+	err = r.db.QueryRow(ctx, userQuery, userID).Scan(&comment.AuthorEmail, &comment.AuthorName)
+	if err != nil {
+		// If user not found, still return comment with user_id only
+		comment.AuthorName = "Unknown"
+		comment.AuthorEmail = ""
+	}
+
 	return comment, nil
 }
 
 // GetCommentByID retrieves a comment by ID
 func (r *commentRepository) GetCommentByID(ctx context.Context, id int) (*domain.Comment, error) {
 	const query = `
-		SELECT id, task_id, user_id, content, created_at, updated_at
-		FROM comments
-		WHERE id = $1
+		SELECT c.id, c.task_id, c.user_id, c.content, c.created_at, c.updated_at, u.email, COALESCE(u.name, u.email) as author_name
+		FROM comments c
+		LEFT JOIN users u ON c.user_id = u.id
+		WHERE c.id = $1
 	`
 
 	comment := &domain.Comment{}
@@ -69,6 +79,8 @@ func (r *commentRepository) GetCommentByID(ctx context.Context, id int) (*domain
 		&comment.Content,
 		&comment.CreatedAt,
 		&comment.UpdatedAt,
+		&comment.AuthorEmail,
+		&comment.AuthorName,
 	)
 
 	if err != nil {
@@ -91,10 +103,11 @@ func (r *commentRepository) ListCommentsByTaskID(ctx context.Context, taskID, li
 	}
 
 	const query = `
-		SELECT id, task_id, user_id, content, created_at, updated_at
-		FROM comments
-		WHERE task_id = $1
-		ORDER BY created_at ASC
+		SELECT c.id, c.task_id, c.user_id, c.content, c.created_at, c.updated_at, u.email, COALESCE(u.name, u.email) as author_name
+		FROM comments c
+		LEFT JOIN users u ON c.user_id = u.id
+		WHERE c.task_id = $1
+		ORDER BY c.created_at ASC
 		LIMIT $2 OFFSET $3
 	`
 
@@ -114,6 +127,8 @@ func (r *commentRepository) ListCommentsByTaskID(ctx context.Context, taskID, li
 			&c.Content,
 			&c.CreatedAt,
 			&c.UpdatedAt,
+			&c.AuthorEmail,
+			&c.AuthorName,
 		)
 		if err != nil {
 			return nil, 0, apperrors.NewDatabaseError("failed to scan comment", err)
@@ -154,6 +169,15 @@ func (r *commentRepository) UpdateComment(ctx context.Context, id int, content s
 		return nil, apperrors.NewDatabaseError("failed to update comment", err)
 	}
 
+	// Fetch user info to populate author name
+	const userQuery = `SELECT email, COALESCE(name, email) as name FROM users WHERE id = $1`
+	err = r.db.QueryRow(ctx, userQuery, comment.UserID).Scan(&comment.AuthorEmail, &comment.AuthorName)
+	if err != nil {
+		// If user not found, still return comment with user_id only
+		comment.AuthorName = "Unknown"
+		comment.AuthorEmail = ""
+	}
+
 	return comment, nil
 }
 
@@ -176,9 +200,10 @@ func (r *commentRepository) DeleteComment(ctx context.Context, id int) error {
 // ListRecentComments retrieves recent comments from all tasks
 func (r *commentRepository) ListRecentComments(ctx context.Context, limit, offset int) ([]domain.Comment, int, error) {
 	const query = `
-		SELECT id, task_id, user_id, content, created_at, updated_at
-		FROM comments
-		ORDER BY created_at DESC
+		SELECT c.id, c.task_id, c.user_id, c.content, c.created_at, c.updated_at, u.email, COALESCE(u.name, u.email) as author_name
+		FROM comments c
+		LEFT JOIN users u ON c.user_id = u.id
+		ORDER BY c.created_at DESC
 		LIMIT $1 OFFSET $2
 	`
 
@@ -196,7 +221,7 @@ func (r *commentRepository) ListRecentComments(ctx context.Context, limit, offse
 	comments := make([]domain.Comment, 0)
 	for rows.Next() {
 		var c domain.Comment
-		if err := rows.Scan(&c.ID, &c.TaskID, &c.UserID, &c.Content, &c.CreatedAt, &c.UpdatedAt); err != nil {
+		if err := rows.Scan(&c.ID, &c.TaskID, &c.UserID, &c.Content, &c.CreatedAt, &c.UpdatedAt, &c.AuthorEmail, &c.AuthorName); err != nil {
 			return nil, 0, err
 		}
 		comments = append(comments, c)

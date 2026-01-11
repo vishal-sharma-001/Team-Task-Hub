@@ -8,13 +8,13 @@ function ProjectCard({ project, onEdit, onDelete, onViewTasks }) {
         <div className="flex gap-2">
           <button
             onClick={onEdit}
-            className="text-blue-600 hover:text-blue-800 font-semibold"
+            className="text-gray-400 hover:text-gray-600"
           >
             ✏️
           </button>
           <button
             onClick={onDelete}
-            className="text-red-600 hover:text-red-800 font-semibold"
+            className="text-gray-400 hover:text-red-600"
           >
             🗑️
           </button>

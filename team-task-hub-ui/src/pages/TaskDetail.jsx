@@ -26,6 +26,7 @@ function TaskDetail() {
   const [editingField, setEditingField] = useState(null);
   const [editValues, setEditValues] = useState({});
   const [isSaving, setIsSaving] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
 
   const { execute: fetchTask, status: taskStatus, error: taskError } = useAsync(
     async () => {
@@ -59,6 +60,17 @@ function TaskDetail() {
     fetchTask().then(setTask);
     fetchComments().then(setComments);
     fetchUsers().then(setUsers);
+    
+    // Get current user from localStorage
+    try {
+      const token = localStorage.getItem('authToken');
+      if (token) {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        setCurrentUser({ id: payload.user_id, email: payload.email });
+      }
+    } catch (err) {
+      console.error('Failed to parse current user:', err);
+    }
   }, [taskId]);
 
   const handleUpdateTask = async (formData) => {
@@ -94,6 +106,10 @@ function TaskDetail() {
     setComments([...comments, newComment]);
   };
 
+  const handleCommentUpdated = (updatedComment) => {
+    setComments(comments.map(c => c.id === updatedComment.id ? updatedComment : c));
+  };
+
   const handleCommentDeleted = async (commentId) => {
     const comment = comments.find(c => c.id === commentId);
     setDeleteConfirm({
@@ -102,6 +118,11 @@ function TaskDetail() {
       commentId: commentId,
       commentText: comment?.text?.substring(0, 50) || 'Comment'
     });
+  };
+
+  const handleEditComment = (comment) => {
+    // CommentList handles the edit action internally
+    // This callback is just for notification purposes
   };
 
   const handleConfirmDeleteComment = async () => {
@@ -159,21 +180,21 @@ function TaskDetail() {
 
   return (
     <div className="min-h-screen bg-white">
-      <div className="container pt-8 pb-12">
+      <div className="container pt-8 pb-12 px-2 sm:px-4">
         {/* Header with Back Button */}
         <div className="mb-8">
           <button
             onClick={() => navigate(-1)}
-            className="text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors mb-6"
+            className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors mb-6"
           >
             ← Back to project
           </button>
         </div>
 
         {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Left Column - Task + Comments */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-3 space-y-6">
             {/* Task Header Card */}
             <div className="border border-gray-200 rounded-lg p-8 bg-white">
               {/* Title Row */}
@@ -187,7 +208,7 @@ function TaskDetail() {
                     onBlur={() => handleInlineEdit('title')}
                     onKeyDown={(e) => e.key === 'Enter' && handleInlineEdit('title')}
                     disabled={isSaving}
-                    className="w-full text-4xl font-bold text-gray-900 outline-none disabled:opacity-50 bg-slate-50 border border-slate-300 px-3 py-2 rounded"
+                    className="w-full text-4xl font-bold text-gray-900 outline-none disabled:opacity-50 bg-gray-50 border border-gray-300 px-3 py-2 rounded"
                     placeholder="Enter task title"
                   />
                 ) : (
@@ -215,7 +236,7 @@ function TaskDetail() {
                     onChange={(e) => setEditValues({ ...editValues, description: e.target.value })}
                     onBlur={() => handleInlineEdit('description')}
                     disabled={isSaving}
-                    className="w-full min-h-[120px] p-3 outline-none font-base text-gray-700 disabled:opacity-50 bg-slate-50 border border-slate-300 rounded"
+                    className="w-full min-h-[120px] p-3 outline-none font-base text-gray-700 disabled:opacity-50 bg-gray-50 border border-gray-300 rounded"
                     placeholder="Click to add description"
                   />
                 ) : (
@@ -224,8 +245,8 @@ function TaskDetail() {
                       setEditingField('description');
                       setEditValues({ description: task.description || '' });
                     }}
-                    className={`text-base leading-relaxed whitespace-pre-wrap cursor-text min-h-[60px] p-3 rounded border border-slate-200 bg-slate-50 ${
-                      task.description ? 'text-gray-700' : 'text-slate-400 italic'
+                    className={`text-base leading-relaxed whitespace-pre-wrap cursor-text min-h-[60px] p-3 rounded border border-gray-200 bg-gray-50 ${
+                      task.description ? 'text-gray-700' : 'text-gray-400 italic'
                     }`}
                     title="Click to edit"
                   >
@@ -237,17 +258,23 @@ function TaskDetail() {
             </div>
 
             {/* Comments Section */}
-            <div className="border border-gray-200 rounded-lg p-8">
+            <div className="border border-gray-200 rounded-lg p-8 bg-white">
               <h2 className="text-xl font-bold text-gray-900 mb-6">Comments</h2>
               
-              <CommentForm taskId={taskId} onCommentAdded={handleCommentAdded} />
+              <CommentForm 
+                taskId={taskId} 
+                onCommentAdded={handleCommentAdded}
+              />
 
               {comments.length > 0 && (
                 <div className="mt-8">
                   <CommentList
                     comments={comments}
                     users={users}
-                    onDeleteComment={handleCommentDeleted}
+                    onDelete={handleCommentDeleted}
+                    onEdit={handleEditComment}
+                    onUpdate={handleCommentUpdated}
+                    currentUserId={currentUser?.id}
                   />
                 </div>
               )}
@@ -266,7 +293,7 @@ function TaskDetail() {
                     onChange={(e) => handleInlineEdit('status', e.target.value)}
                     onBlur={() => setEditingField(null)}
                     disabled={isSaving}
-                    className="w-full px-3 py-2 rounded text-sm font-semibold disabled:opacity-50 bg-slate-50 border border-slate-300"
+                    className="w-full px-3 py-2 rounded text-sm font-semibold disabled:opacity-50 bg-gray-50 border border-gray-300"
                   >
                     {TASK_STATUSES.map(s => (
                       <option key={s} value={s}>{s}</option>
@@ -276,13 +303,7 @@ function TaskDetail() {
                   <button
                     onClick={() => setEditingField('status')}
                     disabled={isSaving}
-                    className={`w-full px-3 py-2 rounded text-sm font-semibold text-left disabled:opacity-50 cursor-pointer transition-colors ${
-                      task.status === 'DONE'
-                        ? 'bg-green-100 text-green-800 hover:bg-green-150'
-                        : task.status === 'IN_PROGRESS'
-                        ? 'bg-blue-100 text-blue-800 hover:bg-blue-150'
-                        : 'bg-slate-100 text-slate-800 hover:bg-slate-150'
-                    }`}
+                    className="w-full px-3 py-2 rounded text-sm font-semibold text-left disabled:opacity-50 cursor-pointer transition-colors bg-gray-100 text-gray-800 hover:bg-gray-150"
                     title="Click to edit"
                   >
                     {task.status}
@@ -300,7 +321,7 @@ function TaskDetail() {
                     onChange={(e) => handleInlineEdit('priority', e.target.value)}
                     onBlur={() => setEditingField(null)}
                     disabled={isSaving}
-                    className="w-full px-3 py-2 rounded text-sm font-semibold disabled:opacity-50 bg-slate-50 border border-slate-300"
+                    className="w-full px-3 py-2 rounded text-sm font-semibold disabled:opacity-50 bg-gray-50 border border-gray-300"
                   >
                     {TASK_PRIORITIES.map(p => (
                       <option key={p} value={p}>{p}</option>
@@ -313,13 +334,7 @@ function TaskDetail() {
                       setEditValues({ priority: task.priority });
                     }}
                     disabled={isSaving}
-                    className={`w-full px-3 py-2 rounded text-sm font-semibold text-left disabled:opacity-50 cursor-pointer transition-colors ${
-                      task.priority === 'HIGH'
-                        ? 'bg-red-100 text-red-800 hover:bg-red-150'
-                        : task.priority === 'MEDIUM'
-                        ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-150'
-                        : 'bg-green-100 text-green-800 hover:bg-green-150'
-                    }`}
+                    className="w-full px-3 py-2 rounded text-sm font-semibold text-left disabled:opacity-50 cursor-pointer transition-colors bg-gray-100 text-gray-800 hover:bg-gray-150"
                     title="Click to edit"
                   >
                     {task.priority}
@@ -334,7 +349,7 @@ function TaskDetail() {
                   <input
                     autoFocus
                     type="date"
-                    value={editValues.due_date !== undefined ? editValues.due_date : (task.due_date ? task.due_date.split('T')[0] : '')}
+                    value={editValues.due_date !== undefined ? editValues.due_date : (task?.due_date ? (typeof task.due_date === 'string' ? task.due_date.split('T')[0] : task.due_date) : '')}
                     onChange={(e) => setEditValues({ ...editValues, due_date: e.target.value })}
                     onBlur={() => {
                       if (editValues.due_date) {
@@ -349,20 +364,21 @@ function TaskDetail() {
                       }
                     }}
                     disabled={isSaving}
-                    className="px-3 py-2 rounded disabled:opacity-50 w-full bg-slate-50 border border-slate-300"
+                    className="px-3 py-2 rounded disabled:opacity-50 w-full bg-gray-50 border border-gray-300"
                   />
                 ) : (
                   <p
                     onClick={() => {
                       if (!isSaving) {
                         setEditingField('due_date');
-                        setEditValues({ due_date: task.due_date ? task.due_date.split('T')[0] : '' });
+                        const dateValue = task?.due_date ? (typeof task.due_date === 'string' ? task.due_date.split('T')[0] : task.due_date) : '';
+                        setEditValues({ due_date: dateValue });
                       }
                     }}
                     className="text-sm text-gray-800 font-medium cursor-text disabled:opacity-50"
                     title="Click to edit"
                   >
-                    {task.due_date ? new Date(task.due_date).toLocaleDateString() : '—'}
+                    {task?.due_date ? (typeof task.due_date === 'string' ? new Date(task.due_date).toLocaleDateString() : 'Invalid date') : '—'}
                   </p>
                 )}
               </div>
@@ -422,7 +438,7 @@ function TaskDetail() {
               {/* Delete Button */}
               <button
                 onClick={handleDeleteTask}
-                className="btn-secondary w-full text-sm border-red-200 text-red-700 hover:bg-red-50"
+                className="btn-danger w-full text-sm"
               >
                 Delete Task
               </button>

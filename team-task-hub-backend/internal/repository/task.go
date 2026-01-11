@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strconv"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -13,11 +14,11 @@ import (
 
 // TaskRepository defines task data access operations
 type TaskRepository interface {
-	CreateTask(ctx context.Context, projectID, createdByID int, title, description, status, priority string) (*domain.Task, error)
+	CreateTask(ctx context.Context, projectID, createdByID int, title, description, status, priority string, assigneeID *int, dueDate *time.Time) (*domain.Task, error)
 	GetTaskByID(ctx context.Context, id int) (*domain.Task, error)
 	ListTasksByProjectID(ctx context.Context, projectID, limit, offset int, status, priority string) ([]domain.Task, int, error)
 	ListTasksByAssignee(ctx context.Context, userID, limit, offset int, status, priority string) ([]domain.Task, int, error)
-	UpdateTask(ctx context.Context, id int, title, description, status, priority string, assigneeID *int) (*domain.Task, error)
+	UpdateTask(ctx context.Context, id int, title, description, status, priority string, assigneeID *int, dueDate *time.Time) (*domain.Task, error)
 	AssignTaskToUser(ctx context.Context, taskID, userID int) (*domain.TaskAssignment, error)
 	DeleteTask(ctx context.Context, id int) error
 }
@@ -31,15 +32,15 @@ func NewTaskRepository(db *pgxpool.Pool) TaskRepository {
 }
 
 // CreateTask creates a new task
-func (r *taskRepository) CreateTask(ctx context.Context, projectID, createdByID int, title, description, status, priority string) (*domain.Task, error) {
+func (r *taskRepository) CreateTask(ctx context.Context, projectID, createdByID int, title, description, status, priority string, assigneeID *int, dueDate *time.Time) (*domain.Task, error) {
 	const query = `
-		INSERT INTO tasks (project_id, title, description, status, priority, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
-		RETURNING id, project_id, assignee_id, title, description, status, priority, created_at, updated_at
+		INSERT INTO tasks (project_id, title, description, status, priority, assignee_id, due_date, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+		RETURNING id, project_id, assignee_id, title, description, status, priority, due_date, created_at, updated_at
 	`
 
 	task := &domain.Task{}
-	err := r.db.QueryRow(ctx, query, projectID, title, description, status, priority).Scan(
+	err := r.db.QueryRow(ctx, query, projectID, title, description, status, priority, assigneeID, dueDate).Scan(
 		&task.ID,
 		&task.ProjectID,
 		&task.AssigneeID,
@@ -47,6 +48,7 @@ func (r *taskRepository) CreateTask(ctx context.Context, projectID, createdByID 
 		&task.Description,
 		&task.Status,
 		&task.Priority,
+		&task.DueDate,
 		&task.CreatedAt,
 		&task.UpdatedAt,
 	)
@@ -61,7 +63,7 @@ func (r *taskRepository) CreateTask(ctx context.Context, projectID, createdByID 
 // GetTaskByID retrieves a task by ID
 func (r *taskRepository) GetTaskByID(ctx context.Context, id int) (*domain.Task, error) {
 	const query = `
-		SELECT t.id, t.project_id, t.assignee_id, t.title, t.description, t.status, t.priority, t.created_at, t.updated_at,
+		SELECT t.id, t.project_id, t.assignee_id, t.title, t.description, t.status, t.priority, t.due_date, t.created_at, t.updated_at,
 		       u.id, u.email
 		FROM tasks t
 		LEFT JOIN users u ON t.assignee_id = u.id
@@ -80,6 +82,7 @@ func (r *taskRepository) GetTaskByID(ctx context.Context, id int) (*domain.Task,
 		&task.Description,
 		&task.Status,
 		&task.Priority,
+		&task.DueDate,
 		&task.CreatedAt,
 		&task.UpdatedAt,
 		&userID,
@@ -129,7 +132,7 @@ func (r *taskRepository) ListTasksByProjectID(ctx context.Context, projectID, li
 	}
 
 	// Get paginated results with user data
-	query := `SELECT t.id, t.project_id, t.assignee_id, t.title, t.description, t.status, t.priority, t.created_at, t.updated_at,
+	query := `SELECT t.id, t.project_id, t.assignee_id, t.title, t.description, t.status, t.priority, t.due_date, t.created_at, t.updated_at,
 	       u.id, u.email
 	FROM tasks t
 	LEFT JOIN users u ON t.assignee_id = u.id
@@ -157,6 +160,7 @@ func (r *taskRepository) ListTasksByProjectID(ctx context.Context, projectID, li
 			&t.Description,
 			&t.Status,
 			&t.Priority,
+			&t.DueDate,
 			&t.CreatedAt,
 			&t.UpdatedAt,
 			&userID,
@@ -187,7 +191,7 @@ func (r *taskRepository) ListTasksByProjectID(ctx context.Context, projectID, li
 // ListTasksByAssignee retrieves all tasks assigned to a user
 func (r *taskRepository) ListTasksByAssignee(ctx context.Context, userID, limit, offset int, status, priority string) ([]domain.Task, int, error) {
 	query := `
-		SELECT t.id, t.project_id, t.assignee_id, t.title, t.description, t.status, t.priority, t.created_at, t.updated_at,
+		SELECT t.id, t.project_id, t.assignee_id, t.title, t.description, t.status, t.priority, t.due_date, t.created_at, t.updated_at,
 		       u.id, u.email
 		FROM tasks t
 		LEFT JOIN users u ON t.assignee_id = u.id
@@ -237,7 +241,7 @@ func (r *taskRepository) ListTasksByAssignee(ctx context.Context, userID, limit,
 		var userEmail *string
 
 		if err := rows.Scan(
-			&t.ID, &t.ProjectID, &t.AssigneeID, &t.Title, &t.Description, &t.Status, &t.Priority, &t.CreatedAt, &t.UpdatedAt,
+			&t.ID, &t.ProjectID, &t.AssigneeID, &t.Title, &t.Description, &t.Status, &t.Priority, &t.DueDate, &t.CreatedAt, &t.UpdatedAt,
 			&assigneeUserID, &userEmail,
 		); err != nil {
 			return nil, 0, err
@@ -258,14 +262,32 @@ func (r *taskRepository) ListTasksByAssignee(ctx context.Context, userID, limit,
 }
 
 // UpdateTask updates a task
-func (r *taskRepository) UpdateTask(ctx context.Context, id int, title, description, status, priority string, assigneeID *int) (*domain.Task, error) {
+func (r *taskRepository) UpdateTask(ctx context.Context, id int, title, description, status, priority string, assigneeID *int, dueDate *time.Time) (*domain.Task, error) {
 	// Update the task
-	if assigneeID != nil {
+	if assigneeID != nil && dueDate != nil {
+		_, err := r.db.Exec(ctx, `
+			UPDATE tasks
+			SET title = $1, description = $2, status = $3, priority = $4, assignee_id = $5, due_date = $6, updated_at = NOW()
+			WHERE id = $7
+		`, title, description, status, priority, *assigneeID, *dueDate, id)
+		if err != nil {
+			return nil, apperrors.NewDatabaseError("failed to update task", err)
+		}
+	} else if assigneeID != nil {
 		_, err := r.db.Exec(ctx, `
 			UPDATE tasks
 			SET title = $1, description = $2, status = $3, priority = $4, assignee_id = $5, updated_at = NOW()
 			WHERE id = $6
 		`, title, description, status, priority, *assigneeID, id)
+		if err != nil {
+			return nil, apperrors.NewDatabaseError("failed to update task", err)
+		}
+	} else if dueDate != nil {
+		_, err := r.db.Exec(ctx, `
+			UPDATE tasks
+			SET title = $1, description = $2, status = $3, priority = $4, due_date = $5, updated_at = NOW()
+			WHERE id = $6
+		`, title, description, status, priority, *dueDate, id)
 		if err != nil {
 			return nil, apperrors.NewDatabaseError("failed to update task", err)
 		}
@@ -282,7 +304,7 @@ func (r *taskRepository) UpdateTask(ctx context.Context, id int, title, descript
 
 	// Fetch and return the updated task with assignee
 	const selectQuery = `
-		SELECT t.id, t.project_id, t.assignee_id, t.title, t.description, t.status, t.priority, t.created_at, t.updated_at,
+		SELECT t.id, t.project_id, t.assignee_id, t.title, t.description, t.status, t.priority, t.due_date, t.created_at, t.updated_at,
 		       u.id, u.email
 		FROM tasks t
 		LEFT JOIN users u ON t.assignee_id = u.id
@@ -301,6 +323,7 @@ func (r *taskRepository) UpdateTask(ctx context.Context, id int, title, descript
 		&task.Description,
 		&task.Status,
 		&task.Priority,
+		&task.DueDate,
 		&task.CreatedAt,
 		&task.UpdatedAt,
 		&userID,

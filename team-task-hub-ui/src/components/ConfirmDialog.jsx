@@ -41,7 +41,7 @@ function ConfirmDialog({ isOpen, title, message, confirmText = "Delete", cancelT
           </button>
           <button
             onClick={onConfirm}
-            className={isDanger ? "btn-primary bg-red-600 hover:bg-red-700 active:bg-red-800" : "btn-primary"}
+            className={isDanger ? "btn-danger" : "btn-primary"}
           >
             {confirmText}
           </button>

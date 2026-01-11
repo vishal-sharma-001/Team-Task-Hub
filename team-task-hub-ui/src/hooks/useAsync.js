@@ -91,6 +91,11 @@ export const useForm = (initialValues, validations, onSubmit) => {
     handleBlur,
     handleSubmit,
     setValues,
+    resetForm: () => {
+      setValues(initialValues);
+      setErrors({});
+      setTouched({});
+    },
   };
 };
 

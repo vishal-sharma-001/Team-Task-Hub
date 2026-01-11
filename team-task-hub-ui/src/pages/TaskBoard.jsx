@@ -258,7 +258,7 @@ function TaskBoard() {
 
   return (
     <div className="min-h-screen bg-white">
-      <div className="container pt-8 pb-12">
+      <div className="container pt-8 pb-12 px-2 sm:px-4">
         <button
           onClick={() => navigate('/projects')}
           className="text-sm font-medium text-slate-600 hover:text-slate-900 mb-8 transition-colors"
@@ -296,13 +296,13 @@ function TaskBoard() {
             <div className="flex gap-3 items-center flex-shrink-0">
               <button
                 onClick={() => setShowForm(!showForm)}
-                className="btn-primary whitespace-nowrap"
+                className="btn-primary"
               >
                 {showForm ? 'Cancel' : '+ New Task'}
               </button>
               <button
                 onClick={handleDeleteProject}
-                className="btn-secondary text-sm border-slate-300 text-slate-700 hover:bg-slate-100"
+                className="btn-danger text-sm"
               >
                 Delete
               </button>

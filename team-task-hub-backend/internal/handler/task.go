@@ -45,7 +45,7 @@ func (h *taskHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := context.Background()
-	task, err := h.taskService.CreateTask(ctx, projectID, userID, req.Title, req.Description, req.Priority)
+	task, err := h.taskService.CreateTask(ctx, projectID, userID, req.Title, req.Description, req.Priority, req.AssigneeID, req.DueDate)
 	if err != nil {
 		w.WriteHeader(ErrorToStatusCode(err))
 		json.NewEncoder(w).Encode(NewErrorResponse(err))
@@ -232,7 +232,7 @@ func (h *taskHandler) UpdateTask(w http.ResponseWriter, r *http.Request) {
 		priority = *req.Priority
 	}
 
-	task, err := h.taskService.UpdateTask(ctx, taskID, title, description, status, priority, req.AssigneeID)
+	task, err := h.taskService.UpdateTask(ctx, taskID, title, description, status, priority, req.AssigneeID, req.DueDate)
 	if err != nil {
 		w.WriteHeader(ErrorToStatusCode(err))
 		json.NewEncoder(w).Encode(NewErrorResponse(err))
@@ -283,7 +283,7 @@ func (h *taskHandler) UpdateTaskStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Update only the status, preserve assignee if set
-	updatedTask, err := h.taskService.UpdateTask(ctx, taskID, task.Title, task.Description, req.Status, task.Priority, task.AssigneeID)
+	updatedTask, err := h.taskService.UpdateTask(ctx, taskID, task.Title, task.Description, req.Status, task.Priority, task.AssigneeID, nil)
 	if err != nil {
 		w.WriteHeader(ErrorToStatusCode(err))
 		json.NewEncoder(w).Encode(NewErrorResponse(err))
@@ -329,7 +329,7 @@ func (h *taskHandler) UpdateTaskPriority(w http.ResponseWriter, r *http.Request)
 	}
 
 	// Update only the priority, preserve assignee if set
-	updatedTask, err := h.taskService.UpdateTask(ctx, taskID, task.Title, task.Description, task.Status, req.Priority, task.AssigneeID)
+	updatedTask, err := h.taskService.UpdateTask(ctx, taskID, task.Title, task.Description, task.Status, req.Priority, task.AssigneeID, nil)
 	if err != nil {
 		w.WriteHeader(ErrorToStatusCode(err))
 		json.NewEncoder(w).Encode(NewErrorResponse(err))
@@ -374,7 +374,7 @@ func (h *taskHandler) UpdateTaskAssignee(w http.ResponseWriter, r *http.Request)
 	}
 
 	// Update only the assignee, preserve other fields
-	updatedTask, err := h.taskService.UpdateTask(ctx, taskID, task.Title, task.Description, task.Status, task.Priority, req.AssigneeID)
+	updatedTask, err := h.taskService.UpdateTask(ctx, taskID, task.Title, task.Description, task.Status, task.Priority, req.AssigneeID, nil)
 	if err != nil {
 		w.WriteHeader(ErrorToStatusCode(err))
 		json.NewEncoder(w).Encode(NewErrorResponse(err))

@@ -63,7 +63,7 @@ function Login({ setUser }) {
     );
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex items-center justify-center px-4">
+    <div className="min-h-screen bg-white flex items-center justify-center px-4">
       <div className="w-full max-w-md">
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-12">
           <div className="mb-10">
@@ -128,7 +128,7 @@ function Login({ setUser }) {
           <div className="mt-8 pt-6 border-t border-gray-200">
             <p className="text-center text-gray-600 text-sm">
               Don't have an account?{' '}
-              <Link to="/signup" className="text-blue-600 font-medium hover:text-blue-700 transition-colors">
+              <Link to="/signup" className="text-gray-900 font-medium hover:opacity-80 transition-opacity">
                 Sign up
               </Link>
             </p>

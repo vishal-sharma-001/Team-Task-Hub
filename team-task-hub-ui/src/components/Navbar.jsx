@@ -26,7 +26,7 @@ function Navbar({ user, setUser }) {
           <div className="flex items-center gap-12">
             <button 
               onClick={() => navigate('/')} 
-              className="text-xl font-bold text-gray-900 hover:text-blue-600 transition-colors cursor-pointer bg-none border-none p-0"
+              className="text-xl font-bold text-gray-900 hover:opacity-80 transition-opacity cursor-pointer bg-none border-none p-0"
             >
               📋 Task Hub
             </button>

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"time"
 
 	"github.com/launchventures/team-task-hub-backend/internal/domain"
 	apperrors "github.com/launchventures/team-task-hub-backend/internal/errors"
@@ -11,11 +12,11 @@ import (
 
 // TaskService defines task-related business logic operations
 type TaskService interface {
-	CreateTask(ctx context.Context, projectID, createdByID int, title, description, priority string) (*domain.Task, error)
+	CreateTask(ctx context.Context, projectID, createdByID int, title, description, priority string, assigneeID *int, dueDate *time.Time) (*domain.Task, error)
 	GetTask(ctx context.Context, id int) (*domain.Task, error)
 	ListTasks(ctx context.Context, projectID, page, pageSize int, status, priority string) ([]domain.Task, int, error)
 	ListAssignedTasks(ctx context.Context, userID, page, pageSize int, status, priority string) ([]domain.Task, int, error)
-	UpdateTask(ctx context.Context, id int, title, description, status, priority string, assigneeID *int) (*domain.Task, error)
+	UpdateTask(ctx context.Context, id int, title, description, status, priority string, assigneeID *int, dueDate *time.Time) (*domain.Task, error)
 	AssignTask(ctx context.Context, taskID, userID int) error
 	DeleteTask(ctx context.Context, id int) error
 }
@@ -29,7 +30,7 @@ func NewTaskService(taskRepo repository.TaskRepository) TaskService {
 }
 
 // CreateTask creates a new task with validation
-func (s *taskService) CreateTask(ctx context.Context, projectID, createdByID int, title, description, priority string) (*domain.Task, error) {
+func (s *taskService) CreateTask(ctx context.Context, projectID, createdByID int, title, description, priority string, assigneeID *int, dueDate *time.Time) (*domain.Task, error) {
 	// Validate task title
 	if appErr := utils.ValidateTaskTitle(title); appErr != nil {
 		return nil, appErr
@@ -49,7 +50,7 @@ func (s *taskService) CreateTask(ctx context.Context, projectID, createdByID int
 	status := "OPEN"
 
 	// Create task in database
-	task, err := s.taskRepo.CreateTask(ctx, projectID, createdByID, title, description, status, priority)
+	task, err := s.taskRepo.CreateTask(ctx, projectID, createdByID, title, description, status, priority, assigneeID, dueDate)
 	if err != nil {
 		return nil, err
 	}
@@ -126,7 +127,7 @@ func (s *taskService) ListAssignedTasks(ctx context.Context, userID, page, pageS
 }
 
 // UpdateTask updates a task with validation
-func (s *taskService) UpdateTask(ctx context.Context, id int, title, description, status, priority string, assigneeID *int) (*domain.Task, error) {
+func (s *taskService) UpdateTask(ctx context.Context, id int, title, description, status, priority string, assigneeID *int, dueDate *time.Time) (*domain.Task, error) {
 	// Get current task first to support partial updates
 	currentTask, err := s.taskRepo.GetTaskByID(ctx, id)
 	if err != nil {
@@ -170,8 +171,16 @@ func (s *taskService) UpdateTask(ctx context.Context, id int, title, description
 		}
 	}
 
+	// Handle due_date - preserve current value if not provided
+	var finalDueDate *time.Time
+	if dueDate != nil {
+		finalDueDate = dueDate
+	} else {
+		finalDueDate = currentTask.DueDate
+	}
+
 	// Update task in database
-	task, err := s.taskRepo.UpdateTask(ctx, id, title, description, status, priority, assigneeID)
+	task, err := s.taskRepo.UpdateTask(ctx, id, title, description, status, priority, assigneeID, finalDueDate)
 	if err != nil {
 		return nil, err
 	}

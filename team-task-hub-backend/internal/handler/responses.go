@@ -1,7 +1,9 @@
 package handler
 
 import (
+	"encoding/json"
 	"net/http"
+	"time"
 
 	"github.com/launchventures/team-task-hub-backend/internal/domain"
 	apperrors "github.com/launchventures/team-task-hub-backend/internal/errors"
@@ -63,18 +65,82 @@ type UpdateProjectRequest struct {
 
 // DTO for task requests
 type CreateTaskRequest struct {
-	Title       string `json:"title" validate:"required,min=3,max=200"`
-	Description string `json:"description" validate:"max=2000"`
-	Priority    string `json:"priority" validate:"required,oneof=LOW MEDIUM HIGH"`
-	AssigneeID  *int   `json:"assignee_id"`
+	Title       string     `json:"title" validate:"required,min=3,max=200"`
+	Description string     `json:"description" validate:"max=2000"`
+	Priority    string     `json:"priority" validate:"required,oneof=LOW MEDIUM HIGH"`
+	AssigneeID  *int       `json:"assignee_id"`
+	DueDate     *time.Time `json:"due_date"`
+}
+
+// UnmarshalJSON handles custom unmarshaling of CreateTaskRequest to support date strings
+func (c *CreateTaskRequest) UnmarshalJSON(data []byte) error {
+	type Alias CreateTaskRequest
+	aux := &struct {
+		DueDate *string `json:"due_date"`
+		*Alias
+	}{
+		Alias: (*Alias)(c),
+	}
+
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	// Parse the due_date string if provided
+	if aux.DueDate != nil && *aux.DueDate != "" {
+		// Try to parse as ISO 8601 date (YYYY-MM-DD)
+		t, err := time.Parse("2006-01-02", *aux.DueDate)
+		if err != nil {
+			// Try parsing as full RFC3339 format
+			t, err = time.Parse(time.RFC3339, *aux.DueDate)
+			if err != nil {
+				return err
+			}
+		}
+		c.DueDate = &t
+	}
+
+	return nil
 }
 
 type UpdateTaskRequest struct {
-	Title       *string `json:"title" validate:"omitempty,min=3,max=200"`
-	Description *string `json:"description" validate:"omitempty,max=2000"`
-	Status      *string `json:"status" validate:"omitempty,oneof=OPEN IN_PROGRESS DONE"`
-	Priority    *string `json:"priority" validate:"omitempty,oneof=LOW MEDIUM HIGH"`
-	AssigneeID  *int    `json:"assignee_id"`
+	Title       *string    `json:"title" validate:"omitempty,min=3,max=200"`
+	Description *string    `json:"description" validate:"omitempty,max=2000"`
+	Status      *string    `json:"status" validate:"omitempty,oneof=OPEN IN_PROGRESS DONE"`
+	Priority    *string    `json:"priority" validate:"omitempty,oneof=LOW MEDIUM HIGH"`
+	AssigneeID  *int       `json:"assignee_id"`
+	DueDate     *time.Time `json:"due_date"`
+}
+
+// UnmarshalJSON handles custom unmarshaling of UpdateTaskRequest to support date strings
+func (u *UpdateTaskRequest) UnmarshalJSON(data []byte) error {
+	type Alias UpdateTaskRequest
+	aux := &struct {
+		DueDate *string `json:"due_date"`
+		*Alias
+	}{
+		Alias: (*Alias)(u),
+	}
+
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	// Parse the due_date string if provided
+	if aux.DueDate != nil && *aux.DueDate != "" {
+		// Try to parse as ISO 8601 date (YYYY-MM-DD)
+		t, err := time.Parse("2006-01-02", *aux.DueDate)
+		if err != nil {
+			// Try parsing as full RFC3339 format
+			t, err = time.Parse(time.RFC3339, *aux.DueDate)
+			if err != nil {
+				return err
+			}
+		}
+		u.DueDate = &t
+	}
+
+	return nil
 }
 
 type UpdateTaskStatusRequest struct {

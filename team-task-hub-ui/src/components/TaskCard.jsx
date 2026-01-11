@@ -1,17 +1,6 @@
 const TASK_STATUSES = ['OPEN', 'IN_PROGRESS', 'DONE'];
 
 function TaskCard({ task, onEdit, onDelete, onStatusChange }) {
-  const priorityColors = {
-    LOW: 'bg-green-100 text-green-800',
-    MEDIUM: 'bg-yellow-100 text-yellow-800',
-    HIGH: 'bg-red-100 text-red-800',
-  };
-
-  const statusColors = {
-    OPEN: 'text-gray-600',
-    IN_PROGRESS: 'text-blue-600',
-    DONE: 'text-green-600',
-  };
 
   const dueDate = task.due_date
     ? new Date(task.due_date).toLocaleDateString()
@@ -24,13 +13,13 @@ function TaskCard({ task, onEdit, onDelete, onStatusChange }) {
         <div className="flex gap-2">
           <button
             onClick={onEdit}
-            className="text-blue-600 hover:text-blue-800"
+            className="text-gray-400 hover:text-gray-600"
           >
             ✏️
           </button>
           <button
             onClick={onDelete}
-            className="text-red-600 hover:text-red-800"
+            className="text-gray-400 hover:text-red-600"
           >
             🗑️
           </button>
@@ -43,13 +32,9 @@ function TaskCard({ task, onEdit, onDelete, onStatusChange }) {
         </p>
       )}
 
-      <div className="flex flex-wrap gap-2 mb-4">
-        <span className={`px-2 py-1 rounded text-xs font-semibold ${priorityColors[task.priority]}`}>
-          {task.priority}
-        </span>
-        <span className={`text-sm font-semibold ${statusColors[task.status]}`}>
-          {task.status}
-        </span>
+      <div className="flex flex-wrap gap-3 mb-4">
+        <span className="text-xs text-gray-600">{task.priority}</span>
+        <span className="text-xs text-gray-600">{task.status}</span>
       </div>
 
       {task.assignee && (
